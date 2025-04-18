@@ -89,9 +89,9 @@ func TestPartitionStat_String(t *testing.T) {
 		Device:     "sd01",
 		Mountpoint: "/",
 		Fstype:     "ext4",
-		Opts:       []string{"ro"},
+		// Opts:       []string{"ro"},
 	}
-	e := `{"device":"sd01","mountpoint":"/","fstype":"ext4","opts":["ro"]}`
+	e := `{"device":"sd01","mountpoint":"/","fstype":"ext4"}`
 	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "DiskUsageStat string is invalid: %v", v)
 }
 

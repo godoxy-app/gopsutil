@@ -26,10 +26,10 @@ type UsageStat struct {
 }
 
 type PartitionStat struct {
-	Device     string   `json:"device"`
-	Mountpoint string   `json:"mountpoint"`
-	Fstype     string   `json:"fstype"`
-	Opts       []string `json:"opts"`
+	Device     string `json:"device"`
+	Mountpoint string `json:"mountpoint"`
+	Fstype     string `json:"fstype"`
+	// Opts       []string `json:"opts"`
 }
 
 type IOCountersStat struct {
@@ -51,7 +51,7 @@ type IOCountersStat struct {
 	WriteBytes uint64  `json:"write_bytes"`
 	ReadCount  uint64  `json:"read_count"`
 	WriteCount uint64  `json:"write_count"`
-	Iops       uint64  `json:"iops"`
+	Iops       uint64  `json:"iops"`        // godoxy
 	ReadSpeed  float64 `json:"read_speed"`  // godoxy
 	WriteSpeed float64 `json:"write_speed"` // godoxy
 }

@@ -296,7 +296,7 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 				Device:     fields[0],
 				Mountpoint: unescapeFstab(fields[1]),
 				Fstype:     fields[2],
-				Opts:       strings.Fields(fields[3]),
+				// Opts:       strings.Fields(fields[3]),
 			}
 
 			if !all {
@@ -332,7 +332,7 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 				Device:     device,
 				Mountpoint: unescapeFstab(mountPoint),
 				Fstype:     fstype,
-				Opts:       mountOpts,
+				// Opts:       mountOpts,
 			}
 
 			if !all {
@@ -384,45 +384,6 @@ func getFileSystems(ctx context.Context) ([]string, error) {
 	}
 
 	return ret, nil
-}
-
-func shouldExcludeDisk(name string) bool {
-	// include only sd* and nvme* disk devices
-	// but not partitions like nvme0p1
-
-	if len(name) < 3 {
-		return true
-	}
-	switch {
-	case strings.HasPrefix(name, "nvme"),
-		strings.HasPrefix(name, "mmcblk"): // NVMe/SD/MMC
-		s := name[len(name)-2]
-		// skip namespaces/partitions
-		switch s {
-		case 'p', 'n':
-			return true
-		default:
-			return false
-		}
-	}
-	switch name[0] {
-	case 's', 'h', 'v': // SCSI/SATA/virtio disks
-		if name[1] != 'd' {
-			return true
-		}
-	case 'x': // Xen virtual disks
-		if name[1:3] != "vd" {
-			return true
-		}
-	default:
-		return true
-	}
-	last := name[len(name)-1]
-	if last >= '0' && last <= '9' {
-		// skip partitions
-		return true
-	}
-	return false
 }
 
 func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOCountersStat, error) {
@@ -487,10 +448,10 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 		// if err != nil {
 		// 	return ret, err
 		// }
-		iopsInProgress, err := strconv.ParseUint((fields[11]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// iopsInProgress, err := strconv.ParseUint((fields[11]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		// iotime, err := strconv.ParseUint((fields[12]), 10, 64)
 		// if err != nil {
 		// 	return ret, err
@@ -504,7 +465,7 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 			WriteBytes: wbytes * sectorSize,
 			ReadCount:  reads,
 			WriteCount: writes,
-			Iops:       iopsInProgress,
+			// Iops:       iopsInProgress,
 			// MergedReadCount:  mergedReads,
 			// MergedWriteCount: mergedWrites,
 			// ReadTime:         rtime,
