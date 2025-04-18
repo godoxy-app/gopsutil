@@ -83,11 +83,11 @@ func Usage(path string) (*UsageStat, error) {
 // and ignore all others (e.g. memory partitions such as /dev/shm)
 //
 // 'all' argument is ignored for BSD, see: https://github.com/giampaolo/psutil/issues/906
-func Partitions(all bool) ([]PartitionStat, error) {
+func Partitions(all bool) ([]*PartitionStat, error) {
 	return PartitionsWithContext(context.Background(), all)
 }
 
-func IOCounters(names ...string) (map[string]IOCountersStat, error) {
+func IOCounters(names ...string) (map[string]*IOCountersStat, error) {
 	return IOCountersWithContext(context.Background(), names...)
 }
 

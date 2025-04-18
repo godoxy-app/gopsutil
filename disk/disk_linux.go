@@ -258,7 +258,7 @@ func readMountFile(root string) (lines []string, useMounts bool, filename string
 	return
 }
 
-func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, error) {
+func PartitionsWithContext(ctx context.Context, all bool) ([]*PartitionStat, error) {
 	// by default, try "/proc/1/..." first
 	root := common.HostProcWithContext(ctx, path.Join("1"))
 
@@ -285,14 +285,14 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 		return nil, err
 	}
 
-	ret := make([]PartitionStat, 0, len(lines))
+	ret := make([]*PartitionStat, 0, len(lines))
 
 	for _, line := range lines {
-		var d PartitionStat
+		var d *PartitionStat
 		if useMounts {
 			fields := strings.Fields(line)
 
-			d = PartitionStat{
+			d = &PartitionStat{
 				Device:     fields[0],
 				Mountpoint: unescapeFstab(fields[1]),
 				Fstype:     fields[2],
@@ -328,7 +328,7 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 			fstype := fields[0]
 			device := fields[1]
 
-			d = PartitionStat{
+			d = &PartitionStat{
 				Device:     device,
 				Mountpoint: unescapeFstab(mountPoint),
 				Fstype:     fstype,
@@ -386,13 +386,13 @@ func getFileSystems(ctx context.Context) ([]string, error) {
 	return ret, nil
 }
 
-func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOCountersStat, error) {
+func IOCountersWithContext(ctx context.Context, names ...string) (map[string]*IOCountersStat, error) {
 	filename := common.HostProcWithContext(ctx, "diskstats")
 	lines, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, err
 	}
-	ret := make(map[string]IOCountersStat)
+	ret := make(map[string]*IOCountersStat)
 	empty := IOCountersStat{}
 
 	// use only basename such as "/dev/sda1" to "sda1"
@@ -486,7 +486,7 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 		// d.SerialNumber, _ = SerialNumberWithContext(ctx, common.HostDevWithContext(ctx, name))
 		// d.Label, _ = LabelWithContext(ctx, name)
 
-		ret[name] = d
+		ret[name] = &d
 	}
 	return ret, nil
 }
