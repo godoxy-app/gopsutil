@@ -19,12 +19,12 @@ func UsageWithContext(_ context.Context, path string) (*UsageStat, error) {
 	bsize := stat.Bsize
 
 	ret := &UsageStat{
-		Path:        unescapeFstab(path),
-		Fstype:      getFsType(stat),
-		Total:       (uint64(stat.Blocks) * uint64(bsize)),
-		Free:        (uint64(stat.Bavail) * uint64(bsize)),
-		InodesTotal: (uint64(stat.Files)),
-		InodesFree:  (uint64(stat.Ffree)),
+		Path:   unescapeFstab(path),
+		Fstype: getFsType(stat),
+		Total:  (uint64(stat.Blocks) * uint64(bsize)),
+		Free:   (uint64(stat.Bavail) * uint64(bsize)),
+		// InodesTotal: (uint64(stat.Files)),
+		// InodesFree:  (uint64(stat.Ffree)),
 	}
 
 	ret.Used = (uint64(stat.Blocks) - uint64(stat.Bfree)) * uint64(bsize)
@@ -38,17 +38,17 @@ func UsageWithContext(_ context.Context, path string) (*UsageStat, error) {
 	}
 
 	// if could not get InodesTotal, return empty
-	if ret.InodesTotal < ret.InodesFree {
-		return ret, nil
-	}
+	// if ret.InodesTotal < ret.InodesFree {
+	// 	return ret, nil
+	// }
 
-	ret.InodesUsed = (ret.InodesTotal - ret.InodesFree)
+	// ret.InodesUsed = (ret.InodesTotal - ret.InodesFree)
 
-	if ret.InodesTotal == 0 {
-		ret.InodesUsedPercent = 0
-	} else {
-		ret.InodesUsedPercent = (float64(ret.InodesUsed) / float64(ret.InodesTotal)) * 100.0
-	}
+	// if ret.InodesTotal == 0 {
+	// 	ret.InodesUsedPercent = 0
+	// } else {
+	// 	ret.InodesUsedPercent = (float64(ret.InodesUsed) / float64(ret.InodesTotal)) * 100.0
+	// }
 
 	return ret, nil
 }

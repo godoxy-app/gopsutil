@@ -12,17 +12,20 @@ import (
 var invoke common.Invoker = common.Invoke{}
 
 type IOCountersStat struct {
-	Name        string `json:"name"`        // interface name
-	BytesSent   uint64 `json:"bytesSent"`   // number of bytes sent
-	BytesRecv   uint64 `json:"bytesRecv"`   // number of bytes received
-	PacketsSent uint64 `json:"packetsSent"` // number of packets sent
-	PacketsRecv uint64 `json:"packetsRecv"` // number of packets received
-	Errin       uint64 `json:"errin"`       // total number of errors while receiving
-	Errout      uint64 `json:"errout"`      // total number of errors while sending
-	Dropin      uint64 `json:"dropin"`      // total number of incoming packets which were dropped
-	Dropout     uint64 `json:"dropout"`     // total number of outgoing packets which were dropped (always 0 on OSX and BSD)
-	Fifoin      uint64 `json:"fifoin"`      // total number of FIFO buffers errors while receiving
-	Fifoout     uint64 `json:"fifoout"`     // total number of FIFO buffers errors while sending
+	// Name      string `json:"name"`       // interface name
+	BytesSent uint64 `json:"bytes_sent"` // number of bytes sent
+	BytesRecv uint64 `json:"bytes_recv"` // number of bytes received
+	// PacketsSent uint64 `json:"packetsSent"` // number of packets sent
+	// PacketsRecv uint64 `json:"packetsRecv"` // number of packets received
+	// Errin       uint64 `json:"errin"`       // total number of errors while receiving
+	// Errout      uint64 `json:"errout"`      // total number of errors while sending
+	// Dropin      uint64 `json:"dropin"`      // total number of incoming packets which were dropped
+	// Dropout     uint64 `json:"dropout"`     // total number of outgoing packets which were dropped (always 0 on OSX and BSD)
+	// Fifoin      uint64 `json:"fifoin"`      // total number of FIFO buffers errors while receiving
+	// Fifoout     uint64 `json:"fifoout"`     // total number of FIFO buffers errors while sending
+
+	UploadSpeed   float64 `json:"upload_speed"`   // godoxy
+	DownloadSpeed float64 `json:"download_speed"` // godoxy
 }
 
 // Addr is implemented compatibility to psutil
@@ -255,22 +258,22 @@ func InterfacesWithContext(_ context.Context) (InterfaceStatList, error) {
 	return ret, nil
 }
 
-func getIOCountersAll(n []IOCountersStat) []IOCountersStat {
-	r := IOCountersStat{
-		Name: "all",
+func getIOCountersAll(n []*IOCountersStat) []*IOCountersStat {
+	r := &IOCountersStat{
+		// Name: "all",
 	}
 	for _, nic := range n {
 		r.BytesRecv += nic.BytesRecv
-		r.PacketsRecv += nic.PacketsRecv
-		r.Errin += nic.Errin
-		r.Dropin += nic.Dropin
+		// r.PacketsRecv += nic.PacketsRecv
+		// r.Errin += nic.Errin
+		// r.Dropin += nic.Dropin
 		r.BytesSent += nic.BytesSent
-		r.PacketsSent += nic.PacketsSent
-		r.Errout += nic.Errout
-		r.Dropout += nic.Dropout
+		// r.PacketsSent += nic.PacketsSent
+		// r.Errout += nic.Errout
+		// r.Dropout += nic.Dropout
 	}
 
-	return []IOCountersStat{r}
+	return []*IOCountersStat{r}
 }
 
 // NetIOCounters returns network I/O statistics for every network
@@ -278,11 +281,11 @@ func getIOCountersAll(n []IOCountersStat) []IOCountersStat {
 // return only sum of all information (which name is 'all'). If true,
 // every network interface installed on the system is returned
 // separately.
-func IOCounters(pernic bool) ([]IOCountersStat, error) {
+func IOCounters(pernic bool) ([]*IOCountersStat, error) {
 	return IOCountersWithContext(context.Background(), pernic)
 }
 
-func IOCountersByFile(pernic bool, filename string) ([]IOCountersStat, error) {
+func IOCountersByFile(pernic bool, filename string) ([]*IOCountersStat, error) {
 	return IOCountersByFileWithContext(context.Background(), pernic, filename)
 }
 

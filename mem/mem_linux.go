@@ -84,30 +84,30 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVir
 				return ret, retEx, err
 			}
 			ret.Cached = t * 1024
-		case "Active":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Active = t * 1024
-		case "Inactive":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Inactive = t * 1024
-		case "Active(anon)":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.ActiveAnon = t * 1024
-		case "Inactive(anon)":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.InactiveAnon = t * 1024
+		// case "Active":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.Active = t * 1024
+		// case "Inactive":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.Inactive = t * 1024
+		// case "Active(anon)":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	retEx.ActiveAnon = t * 1024
+		// case "Inactive(anon)":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	retEx.InactiveAnon = t * 1024
 		case "Active(file)":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
@@ -122,42 +122,42 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVir
 			}
 			inactiveFile = true
 			retEx.InactiveFile = t * 1024
-		case "Unevictable":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.Unevictable = t * 1024
-		case "Writeback":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.WriteBack = t * 1024
-		case "WritebackTmp":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.WriteBackTmp = t * 1024
-		case "Dirty":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Dirty = t * 1024
-		case "Shmem":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Shared = t * 1024
-		case "Slab":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Slab = t * 1024
+		// case "Unevictable":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	retEx.Unevictable = t * 1024
+		// case "Writeback":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.WriteBack = t * 1024
+		// case "WritebackTmp":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.WriteBackTmp = t * 1024
+		// case "Dirty":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.Dirty = t * 1024
+		// case "Shmem":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.Shared = t * 1024
+		// case "Slab":
+		// 	t, err := strconv.ParseUint(value, 10, 64)
+		// 	if err != nil {
+		// 		return ret, retEx, err
+		// 	}
+		// 	ret.Slab = t * 1024
 		case "SReclaimable":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
@@ -165,132 +165,132 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVir
 			}
 			sReclaimable = true
 			ret.Sreclaimable = t * 1024
-		case "SUnreclaim":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Sunreclaim = t * 1024
-		case "PageTables":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.PageTables = t * 1024
-		case "SwapCached":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.SwapCached = t * 1024
-		case "CommitLimit":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.CommitLimit = t * 1024
-		case "Committed_AS":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.CommittedAS = t * 1024
-		case "HighTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HighTotal = t * 1024
-		case "HighFree":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HighFree = t * 1024
-		case "LowTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.LowTotal = t * 1024
-		case "LowFree":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.LowFree = t * 1024
-		case "SwapTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.SwapTotal = t * 1024
-		case "SwapFree":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.SwapFree = t * 1024
-		case "Mapped":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Mapped = t * 1024
-		case "VmallocTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.VmallocTotal = t * 1024
-		case "VmallocUsed":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.VmallocUsed = t * 1024
-		case "VmallocChunk":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.VmallocChunk = t * 1024
-		case "HugePages_Total":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesTotal = t
-		case "HugePages_Free":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesFree = t
-		case "HugePages_Rsvd":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesRsvd = t
-		case "HugePages_Surp":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesSurp = t
-		case "Hugepagesize":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePageSize = t * 1024
-		case "AnonHugePages":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.AnonHugePages = t * 1024
+			// case "SUnreclaim":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.Sunreclaim = t * 1024
+			// case "PageTables":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.PageTables = t * 1024
+			// case "SwapCached":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.SwapCached = t * 1024
+			// case "CommitLimit":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.CommitLimit = t * 1024
+			// case "Committed_AS":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.CommittedAS = t * 1024
+			// case "HighTotal":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HighTotal = t * 1024
+			// case "HighFree":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HighFree = t * 1024
+			// case "LowTotal":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.LowTotal = t * 1024
+			// case "LowFree":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.LowFree = t * 1024
+			// case "SwapTotal":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.SwapTotal = t * 1024
+			// case "SwapFree":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.SwapFree = t * 1024
+			// case "Mapped":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.Mapped = t * 1024
+			// case "VmallocTotal":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.VmallocTotal = t * 1024
+			// case "VmallocUsed":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.VmallocUsed = t * 1024
+			// case "VmallocChunk":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.VmallocChunk = t * 1024
+			// case "HugePages_Total":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HugePagesTotal = t
+			// case "HugePages_Free":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HugePagesFree = t
+			// case "HugePages_Rsvd":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HugePagesRsvd = t
+			// case "HugePages_Surp":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HugePagesSurp = t
+			// case "Hugepagesize":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.HugePageSize = t * 1024
+			// case "AnonHugePages":
+			// 	t, err := strconv.ParseUint(value, 10, 64)
+			// 	if err != nil {
+			// 		return ret, retEx, err
+			// 	}
+			// 	ret.AnonHugePages = t * 1024
 		}
 	}
 
@@ -414,10 +414,6 @@ func calculateAvailVmem(ctx context.Context, ret *VirtualMemoryStat, retEx *ExVi
 	pageCache -= uint64(math.Min(float64(pageCache/2), float64(watermarkLow)))
 	availMemory += pageCache
 	availMemory += ret.Sreclaimable - uint64(math.Min(float64(ret.Sreclaimable/2.0), float64(watermarkLow)))
-
-	if availMemory < 0 {
-		availMemory = 0
-	}
 
 	return availMemory
 }

@@ -30,7 +30,7 @@ type VirtualMemoryStat struct {
 	// Percentage of RAM used by programs
 	//
 	// This value is computed from the kernel specific values.
-	UsedPercent float64 `json:"usedPercent"`
+	UsedPercent float64 `json:"used_percent"`
 
 	// This is the kernel's notion of free memory; RAM chips whose bits nobody
 	// cares about the value of right now. For a human consumable number,
@@ -39,48 +39,48 @@ type VirtualMemoryStat struct {
 
 	// OS X / BSD specific numbers:
 	// http://www.macyourself.com/2010/02/17/what-is-free-wired-active-and-inactive-system-memory-ram/
-	Active   uint64 `json:"active"`
-	Inactive uint64 `json:"inactive"`
-	Wired    uint64 `json:"wired"`
+	// Active   uint64 `json:"active"`
+	// Inactive uint64 `json:"inactive"`
+	// Wired    uint64 `json:"wired"`
 
 	// FreeBSD specific numbers:
 	// https://reviews.freebsd.org/D8467
-	Laundry uint64 `json:"laundry"`
+	// Laundry uint64 `json:"laundry"`
 
 	// Linux specific numbers
 	// https://www.centos.org/docs/5/html/5.1/Deployment_Guide/s2-proc-meminfo.html
 	// https://www.kernel.org/doc/Documentation/filesystems/proc.txt
 	// https://www.kernel.org/doc/Documentation/vm/overcommit-accounting
 	// https://www.kernel.org/doc/Documentation/vm/transhuge.txt
-	Buffers        uint64 `json:"buffers"`
-	Cached         uint64 `json:"cached"`
-	WriteBack      uint64 `json:"writeBack"`
-	Dirty          uint64 `json:"dirty"`
-	WriteBackTmp   uint64 `json:"writeBackTmp"`
-	Shared         uint64 `json:"shared"`
-	Slab           uint64 `json:"slab"`
-	Sreclaimable   uint64 `json:"sreclaimable"`
-	Sunreclaim     uint64 `json:"sunreclaim"`
-	PageTables     uint64 `json:"pageTables"`
-	SwapCached     uint64 `json:"swapCached"`
-	CommitLimit    uint64 `json:"commitLimit"`
-	CommittedAS    uint64 `json:"committedAS"`
-	HighTotal      uint64 `json:"highTotal"`
-	HighFree       uint64 `json:"highFree"`
-	LowTotal       uint64 `json:"lowTotal"`
-	LowFree        uint64 `json:"lowFree"`
-	SwapTotal      uint64 `json:"swapTotal"`
-	SwapFree       uint64 `json:"swapFree"`
-	Mapped         uint64 `json:"mapped"`
-	VmallocTotal   uint64 `json:"vmallocTotal"`
-	VmallocUsed    uint64 `json:"vmallocUsed"`
-	VmallocChunk   uint64 `json:"vmallocChunk"`
-	HugePagesTotal uint64 `json:"hugePagesTotal"`
-	HugePagesFree  uint64 `json:"hugePagesFree"`
-	HugePagesRsvd  uint64 `json:"hugePagesRsvd"`
-	HugePagesSurp  uint64 `json:"hugePagesSurp"`
-	HugePageSize   uint64 `json:"hugePageSize"`
-	AnonHugePages  uint64 `json:"anonHugePages"`
+	Buffers uint64 `json:"-"`
+	Cached  uint64 `json:"-"`
+	// WriteBack      uint64 `json:"writeBack"`
+	// Dirty          uint64 `json:"dirty"`
+	// WriteBackTmp   uint64 `json:"writeBackTmp"`
+	// Shared         uint64 `json:"shared"`
+	// Slab           uint64 `json:"slab"`
+	Sreclaimable uint64 `json:"-"`
+	// Sunreclaim     uint64 `json:"sunreclaim"`
+	// PageTables     uint64 `json:"pageTables"`
+	// SwapCached     uint64 `json:"swapCached"`
+	// CommitLimit    uint64 `json:"commitLimit"`
+	// CommittedAS    uint64 `json:"committedAS"`
+	// HighTotal      uint64 `json:"highTotal"`
+	// HighFree       uint64 `json:"highFree"`
+	// LowTotal       uint64 `json:"lowTotal"`
+	// LowFree        uint64 `json:"lowFree"`
+	// SwapTotal      uint64 `json:"swapTotal"`
+	// SwapFree       uint64 `json:"swapFree"`
+	// Mapped         uint64 `json:"mapped"`
+	// VmallocTotal   uint64 `json:"vmallocTotal"`
+	// VmallocUsed    uint64 `json:"vmallocUsed"`
+	// VmallocChunk   uint64 `json:"vmallocChunk"`
+	// HugePagesTotal uint64 `json:"hugePagesTotal"`
+	// HugePagesFree  uint64 `json:"hugePagesFree"`
+	// HugePagesRsvd  uint64 `json:"hugePagesRsvd"`
+	// HugePagesSurp  uint64 `json:"hugePagesSurp"`
+	// HugePageSize   uint64 `json:"hugePageSize"`
+	// AnonHugePages  uint64 `json:"anonHugePages"`
 }
 
 type SwapMemoryStat struct {

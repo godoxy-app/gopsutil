@@ -14,10 +14,10 @@ type Warnings = common.Warnings
 var invoke common.Invoker = common.Invoke{}
 
 type TemperatureStat struct {
-	SensorKey   string  `json:"sensorKey"`
+	SensorKey   string  `json:"name"`
 	Temperature float64 `json:"temperature"`
-	High        float64 `json:"sensorHigh"`
-	Critical    float64 `json:"sensorCritical"`
+	High        float64 `json:"high"`
+	Critical    float64 `json:"critical"`
 }
 
 func (t TemperatureStat) String() string {

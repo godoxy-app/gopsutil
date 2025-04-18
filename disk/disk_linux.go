@@ -416,58 +416,59 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 		if err != nil {
 			return ret, err
 		}
-		mergedReads, err := strconv.ParseUint((fields[4]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// mergedReads, err := strconv.ParseUint((fields[4]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		rbytes, err := strconv.ParseUint((fields[5]), 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		rtime, err := strconv.ParseUint((fields[6]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// rtime, err := strconv.ParseUint((fields[6]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		writes, err := strconv.ParseUint((fields[7]), 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		mergedWrites, err := strconv.ParseUint((fields[8]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// mergedWrites, err := strconv.ParseUint((fields[8]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		wbytes, err := strconv.ParseUint((fields[9]), 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		wtime, err := strconv.ParseUint((fields[10]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// wtime, err := strconv.ParseUint((fields[10]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		iopsInProgress, err := strconv.ParseUint((fields[11]), 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		iotime, err := strconv.ParseUint((fields[12]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		weightedIO, err := strconv.ParseUint((fields[13]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// iotime, err := strconv.ParseUint((fields[12]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// weightedIO, err := strconv.ParseUint((fields[13]), 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		d := IOCountersStat{
-			ReadBytes:        rbytes * sectorSize,
-			WriteBytes:       wbytes * sectorSize,
-			ReadCount:        reads,
-			WriteCount:       writes,
-			MergedReadCount:  mergedReads,
-			MergedWriteCount: mergedWrites,
-			ReadTime:         rtime,
-			WriteTime:        wtime,
-			IopsInProgress:   iopsInProgress,
-			IoTime:           iotime,
-			WeightedIO:       weightedIO,
+			ReadBytes:  rbytes * sectorSize,
+			WriteBytes: wbytes * sectorSize,
+			ReadCount:  reads,
+			WriteCount: writes,
+			Iops:       iopsInProgress,
+			// MergedReadCount:  mergedReads,
+			// MergedWriteCount: mergedWrites,
+			// ReadTime:         rtime,
+			// WriteTime:        wtime,
+			// IopsInProgress:   iopsInProgress,
+			// IoTime:           iotime,
+			// WeightedIO:       weightedIO,
 		}
 		if d == empty {
 			continue
@@ -478,8 +479,8 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 		// Since `name` here is already a basename, re-add the /dev path.
 		// This is not ideal, but we may break the API by changing how SerialNumberWithContext
 		// works.
-		d.SerialNumber, _ = SerialNumberWithContext(ctx, common.HostDevWithContext(ctx, name))
-		d.Label, _ = LabelWithContext(ctx, name)
+		// d.SerialNumber, _ = SerialNumberWithContext(ctx, common.HostDevWithContext(ctx, name))
+		// d.Label, _ = LabelWithContext(ctx, name)
 
 		ret[name] = d
 	}

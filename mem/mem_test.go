@@ -30,17 +30,17 @@ func TestVirtualMemory(t *testing.T) {
 
 	total := v.Used + v.Free + v.Buffers + v.Cached
 	totalStr := "used + free + buffers + cached"
-	switch runtime.GOOS {
-	case "windows":
-		total = v.Used + v.Available
-		totalStr = "used + available"
-	case "darwin", "openbsd":
-		total = v.Used + v.Free + v.Cached + v.Inactive
-		totalStr = "used + free + cached + inactive"
-	case "freebsd":
-		total = v.Used + v.Free + v.Cached + v.Inactive + v.Laundry
-		totalStr = "used + free + cached + inactive + laundry"
-	}
+	// switch runtime.GOOS {
+	// case "windows":
+	// 	total = v.Used + v.Available
+	// 	totalStr = "used + available"
+	// case "darwin", "openbsd":
+	// 	total = v.Used + v.Free + v.Cached + v.Inactive
+	// 	totalStr = "used + free + cached + inactive"
+	// case "freebsd":
+	// 	total = v.Used + v.Free + v.Cached + v.Inactive + v.Laundry
+	// 	totalStr = "used + free + cached + inactive + laundry"
+	// }
 	assert.Equalf(t, v.Total, total,
 		"Total should be computable (%v): %v", totalStr, v)
 

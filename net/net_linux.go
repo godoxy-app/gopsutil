@@ -39,12 +39,12 @@ const ( // Conntrack Column numbers
 	ctSEARCH_RESTART //nolint:revive //FIXME
 )
 
-func IOCountersWithContext(ctx context.Context, pernic bool) ([]IOCountersStat, error) {
+func IOCountersWithContext(ctx context.Context, pernic bool) ([]*IOCountersStat, error) {
 	filename := common.HostProcWithContext(ctx, "net/dev")
 	return IOCountersByFileWithContext(ctx, pernic, filename)
 }
 
-func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string) ([]IOCountersStat, error) {
+func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string) ([]*IOCountersStat, error) {
 	lines, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string
 
 	statlen := len(lines) - 1
 
-	ret := make([]IOCountersStat, 0, statlen)
+	ret := make([]*IOCountersStat, 0, statlen)
 
 	for _, line := range lines[2:] {
 		separatorPos := strings.LastIndex(line, ":")
@@ -74,19 +74,19 @@ func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string
 		if err != nil {
 			return ret, err
 		}
-		packetsRecv, err := strconv.ParseUint(fields[1], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		errIn, err := strconv.ParseUint(fields[2], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		dropIn, err := strconv.ParseUint(fields[3], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		fifoIn, err := strconv.ParseUint(fields[4], 10, 64)
+		// packetsRecv, err := strconv.ParseUint(fields[1], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// errIn, err := strconv.ParseUint(fields[2], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// dropIn, err := strconv.ParseUint(fields[3], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// fifoIn, err := strconv.ParseUint(fields[4], 10, 64)
 		if err != nil {
 			return ret, err
 		}
@@ -94,35 +94,35 @@ func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string
 		if err != nil {
 			return ret, err
 		}
-		packetsSent, err := strconv.ParseUint(fields[9], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		errOut, err := strconv.ParseUint(fields[10], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		dropOut, err := strconv.ParseUint(fields[11], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		fifoOut, err := strconv.ParseUint(fields[12], 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// packetsSent, err := strconv.ParseUint(fields[9], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// errOut, err := strconv.ParseUint(fields[10], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// dropOut, err := strconv.ParseUint(fields[11], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// fifoOut, err := strconv.ParseUint(fields[12], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 
-		nic := IOCountersStat{
-			Name:        interfaceName,
-			BytesRecv:   bytesRecv,
-			PacketsRecv: packetsRecv,
-			Errin:       errIn,
-			Dropin:      dropIn,
-			Fifoin:      fifoIn,
-			BytesSent:   bytesSent,
-			PacketsSent: packetsSent,
-			Errout:      errOut,
-			Dropout:     dropOut,
-			Fifoout:     fifoOut,
+		nic := &IOCountersStat{
+			// Name:        interfaceName,
+			BytesRecv: bytesRecv,
+			// PacketsRecv: packetsRecv,
+			// Errin:       errIn,
+			// Dropin:      dropIn,
+			// Fifoin:      fifoIn,
+			BytesSent: bytesSent,
+			// PacketsSent: packetsSent,
+			// Errout:      errOut,
+			// Dropout:     dropOut,
+			// Fifoout:     fifoOut,
 		}
 		ret = append(ret, nic)
 	}
