@@ -40,3 +40,17 @@ func shouldExcludeDisk(name string) bool {
 	}
 	return false
 }
+
+// modern fs for local/remote disk devices
+func shouldIncludeFsType(fsType string) bool {
+	switch fsType {
+	case "btrfs", "ceph", "cifs", "fuseblk",
+		"ext", "ext2", "ext3", "ext4",
+		"nfs", "smb",
+		"f2fs", "fat", "jfs", "vfat",
+		"xfs", "zfs":
+		return true
+	default:
+		return false
+	}
+}

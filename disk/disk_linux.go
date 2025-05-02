@@ -292,6 +292,10 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]*PartitionStat, err
 		if useMounts {
 			fields := strings.Fields(line)
 
+			if !shouldIncludeFsType(fields[2]) {
+				continue
+			}
+
 			d = &PartitionStat{
 				Device:     fields[0],
 				Mountpoint: unescapeFstab(fields[1]),
