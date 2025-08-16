@@ -2,7 +2,7 @@
 package host
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"sync"
 	"testing"
@@ -15,7 +15,9 @@ import (
 
 func TestHostID(t *testing.T) {
 	v, err := HostID()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotEmptyf(t, v, "Could not get host id %v", v)
 	t.Log(v)
@@ -23,7 +25,9 @@ func TestHostID(t *testing.T) {
 
 func TestInfo(t *testing.T) {
 	v, err := Info()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	empty := &InfoStat{}
 	assert.NotSamef(t, v, empty, "Could not get hostinfo %v", v)
@@ -37,7 +41,9 @@ func TestUptime(t *testing.T) {
 	}
 
 	v, err := Uptime()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotZerof(t, v, "Could not get up time %v", v)
 }
@@ -47,14 +53,18 @@ func TestBootTime(t *testing.T) {
 		t.Skip("Skip CI")
 	}
 	v, err := BootTime()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotZerof(t, v, "Could not get boot time %v", v)
 	assert.GreaterOrEqualf(t, v, uint64(946652400), "Invalid Boottime, older than 2000-01-01")
 	t.Logf("first boot time: %d", v)
 
 	v2, err := BootTime()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.Equalf(t, v, v2, "cached boot time is different")
 	t.Logf("second boot time: %d", v2)
@@ -62,7 +72,9 @@ func TestBootTime(t *testing.T) {
 
 func TestUsers(t *testing.T) {
 	v, err := Users()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	empty := UserStat{}
 	if len(v) == 0 {
@@ -86,7 +98,7 @@ func TestInfoStat_String(t *testing.T) {
 		KernelArch: "x86_64",
 	}
 	e := `{"hostname":"test","uptime":3000,"bootTime":1447040000,"procs":100,"os":"linux","platform":"ubuntu","platformFamily":"","platformVersion":"","kernelVersion":"","kernelArch":"x86_64","virtualizationSystem":"","virtualizationRole":"","hostId":"edfd25ff-3c9c-b1a4-e660-bd826495ad35"}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "HostInfoStat string is invalid:\ngot  %v\nwant %v", v, e)
+	assert.JSONEqf(t, e, v.String(), "HostInfoStat string is invalid:\ngot  %v\nwant %v", v, e)
 }
 
 func TestUserStat_String(t *testing.T) {
@@ -97,12 +109,14 @@ func TestUserStat_String(t *testing.T) {
 		Started:  100,
 	}
 	e := `{"user":"user","terminal":"term","host":"host","started":100}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "UserStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "UserStat string is invalid: %v", v)
 }
 
 func TestGuid(t *testing.T) {
 	id, err := HostID()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotEmptyf(t, id, "Host id is empty")
 	t.Logf("Host id value: %v", id)
@@ -116,7 +130,9 @@ func TestVirtualization(t *testing.T) {
 		go func(j int) {
 			system, role, err := Virtualization()
 			defer wg.Done()
-			common.SkipIfNotImplementedErr(t, err)
+			if errors.Is(err, common.ErrNotImplementedError) {
+				t.Skip("not implemented")
+			}
 			assert.NoErrorf(t, err, "Virtualization() failed, %v", err)
 
 			if j == 9 {
@@ -129,7 +145,9 @@ func TestVirtualization(t *testing.T) {
 
 func TestKernelVersion(t *testing.T) {
 	version, err := KernelVersion()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoErrorf(t, err, "KernelVersion() failed, %v", err)
 	assert.NotEmptyf(t, version, "KernelVersion() returns empty: %s", version)
 
@@ -138,7 +156,9 @@ func TestKernelVersion(t *testing.T) {
 
 func TestPlatformInformation(t *testing.T) {
 	platform, family, version, err := PlatformInformation()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoErrorf(t, err, "PlatformInformation() failed, %v", err)
 	assert.NotEmptyf(t, platform, "PlatformInformation() returns empty: %v", platform)
 

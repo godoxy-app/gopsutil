@@ -2,7 +2,7 @@
 package mem
 
 import (
-	"fmt"
+	"errors"
 	"runtime"
 	"testing"
 
@@ -18,7 +18,9 @@ func TestVirtualMemory(t *testing.T) {
 	}
 
 	v, err := VirtualMemory()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	empty := &VirtualMemoryStat{}
 	assert.NotSamef(t, v, empty, "error %v", v)
@@ -59,7 +61,9 @@ func TestVirtualMemory(t *testing.T) {
 
 func TestSwapMemory(t *testing.T) {
 	v, err := SwapMemory()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	empty := &SwapMemoryStat{}
 	assert.NotSamef(t, v, empty, "error %v", v)
@@ -77,7 +81,7 @@ func TestVirtualMemoryStat_String(t *testing.T) {
 	}
 	t.Log(v)
 	e := `{"total":10,"available":20,"used":30,"usedPercent":30.1,"free":40,"active":0,"inactive":0,"wired":0,"laundry":0,"buffers":0,"cached":0,"writeBack":0,"dirty":0,"writeBackTmp":0,"shared":0,"slab":0,"sreclaimable":0,"sunreclaim":0,"pageTables":0,"swapCached":0,"commitLimit":0,"committedAS":0,"highTotal":0,"highFree":0,"lowTotal":0,"lowFree":0,"swapTotal":0,"swapFree":0,"mapped":0,"vmallocTotal":0,"vmallocUsed":0,"vmallocChunk":0,"hugePagesTotal":0,"hugePagesFree":0,"hugePagesRsvd":0,"hugePagesSurp":0,"hugePageSize":0,"anonHugePages":0}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "VirtualMemoryStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "VirtualMemoryStat string is invalid: %v", v)
 }
 
 func TestSwapMemoryStat_String(t *testing.T) {
@@ -94,12 +98,14 @@ func TestSwapMemoryStat_String(t *testing.T) {
 		PgMajFault:  6,
 	}
 	e := `{"total":10,"used":30,"free":40,"usedPercent":30.1,"sin":1,"sout":2,"pgIn":3,"pgOut":4,"pgFault":5,"pgMajFault":6}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "SwapMemoryStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "SwapMemoryStat string is invalid: %v", v)
 }
 
 func TestSwapDevices(t *testing.T) {
 	v, err := SwapDevices()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoErrorf(t, err, "error calling SwapDevices: %v", err)
 
 	t.Logf("SwapDevices() -> %+v", v)

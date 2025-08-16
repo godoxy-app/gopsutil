@@ -2,7 +2,7 @@
 package cpu
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"runtime"
 	"testing"
@@ -16,7 +16,9 @@ import (
 
 func TestTimes(t *testing.T) {
 	v, err := Times(false)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotEmptyf(t, v, "could not get CPUs: %s", err)
 	empty := TimesStat{}
@@ -26,11 +28,15 @@ func TestTimes(t *testing.T) {
 
 	// test sum of per cpu stats is within margin of error for cpu total stats
 	cpuTotal, err := Times(false)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotEmptyf(t, cpuTotal, "could not get CPUs: %s", err)
 	perCPU, err := Times(true)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotEmptyf(t, perCPU, "could not get CPUs: %s", err)
 	var perCPUUserTimeSum float64
@@ -60,13 +66,20 @@ func TestTimes(t *testing.T) {
 
 func TestCounts(t *testing.T) {
 	logicalCount, err := Counts(true)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotZerof(t, logicalCount, "could not get logical CPU counts: %v", logicalCount)
 	t.Logf("logical cores: %d", logicalCount)
 	physicalCount, err := Counts(false)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
+	assert.NotZerof(t, physicalCount, "could not get physical CPU counts: %v", physicalCount)
+	t.Logf("physical cores: %d", physicalCount)
+	assert.GreaterOrEqualf(t, logicalCount, physicalCount, "logical CPU count should be greater than or equal to physical CPU count: %v >= %v", logicalCount, physicalCount)
 	assert.NotZerof(t, physicalCount, "could not get physical CPU counts: %v", physicalCount)
 	t.Logf("physical cores: %d", physicalCount)
 	assert.GreaterOrEqualf(t, logicalCount, physicalCount, "logical CPU count should be greater than or equal to physical CPU count: %v >= %v", logicalCount, physicalCount)
@@ -80,12 +93,14 @@ func TestTimeStat_String(t *testing.T) {
 		Idle:   300.1,
 	}
 	e := `{"cpu":"cpu0","user":100.1,"system":200.1,"idle":300.1,"nice":0.0,"iowait":0.0,"irq":0.0,"softirq":0.0,"steal":0.0,"guest":0.0,"guestNice":0.0}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "CPUTimesStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "CPUTimesStat string is invalid: %v", v)
 }
 
 func TestInfo(t *testing.T) {
 	v, err := Info()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 	assert.NotEmptyf(t, v, "could not get CPU Info")
 	for _, vv := range v {
@@ -101,7 +116,9 @@ func testPercent(t *testing.T, percpu bool) {
 	if runtime.GOOS != "windows" {
 		testCount = 100
 		v, err := Percent(time.Millisecond, percpu)
-		common.SkipIfNotImplementedErr(t, err)
+		if errors.Is(err, common.ErrNotImplementedError) {
+			t.Skip("not implemented")
+		}
 		require.NoError(t, err)
 		// Skip CI which CPU num is different
 		if os.Getenv("CI") != "true" {
@@ -113,7 +130,9 @@ func testPercent(t *testing.T, percpu bool) {
 	for i := 0; i < testCount; i++ {
 		duration := time.Duration(10) * time.Microsecond
 		v, err := Percent(duration, percpu)
-		common.SkipIfNotImplementedErr(t, err)
+		if errors.Is(err, common.ErrNotImplementedError) {
+			t.Skip("not implemented")
+		}
 		require.NoError(t, err)
 		for _, percent := range v {
 			// Check for slightly greater then 100% to account for any rounding issues.
@@ -132,7 +151,9 @@ func testPercentLastUsed(t *testing.T, percpu bool) {
 	if runtime.GOOS != "windows" {
 		testCount = 2
 		v, err := Percent(time.Millisecond, percpu)
-		common.SkipIfNotImplementedErr(t, err)
+		if errors.Is(err, common.ErrNotImplementedError) {
+			t.Skip("not implemented")
+		}
 		require.NoError(t, err)
 		// Skip CI which CPU num is different
 		if os.Getenv("CI") != "true" {
@@ -143,7 +164,9 @@ func testPercentLastUsed(t *testing.T, percpu bool) {
 	}
 	for i := 0; i < testCount; i++ {
 		v, err := Percent(0, percpu)
-		common.SkipIfNotImplementedErr(t, err)
+		if errors.Is(err, common.ErrNotImplementedError) {
+			t.Skip("not implemented")
+		}
 		require.NoError(t, err)
 		time.Sleep(1 * time.Millisecond)
 		for _, percent := range v {

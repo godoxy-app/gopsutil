@@ -41,6 +41,13 @@ linters:
     gocritic:
       disabled-checks:
         - captLocal
+        - commentedOutCode
+        - deferInLoop
+        - hexLiteral
+        - hugeParam
+        - tooManyResultsChecker
+        - unnamedResult
+      enable-all: true
     gomodguard:
       blocked:
         modules:
@@ -55,7 +62,6 @@ linters:
       disable:
         - copylocks
         - fieldalignment
-        - shadow
         - testinggoroutine
       enable-all: true
     perfsprint:
@@ -105,6 +111,7 @@ linters:
         - name: unnecessary-stmt
         - name: unreachable-code
         - name: unused-parameter
+        - name: unused-receiver
         - name: use-any
         - name: var-declaration
         - name: var-naming
@@ -112,6 +119,7 @@ linters:
             - ["ID"] # AllowList
             - ["VM"] # DenyList
             - - upperCaseConst: true # Extra parameter (upperCaseConst|skipPackageNameChecks)
+                skipPackageNameChecks: true
     staticcheck:
       checks:
         - all
@@ -135,6 +143,10 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      - text: 'shadow: declaration of "err" shadows declaration at line'
+        linters:
+          - govet
     warn-unused: true
 output:
   show-stats: false

@@ -4,6 +4,7 @@
 package mem
 
 import (
+	"context"
 	"encoding/json"
 )
 
@@ -21,4 +22,16 @@ type ExLinux struct{}
 
 func NewExLinux() *ExLinux {
 	return &ExLinux{}
+}
+
+func (ex *ExLinux) VirtualMemory() (*ExVirtualMemory, error) {
+	return ex.VirtualMemoryWithContext(context.Background())
+}
+
+func (*ExLinux) VirtualMemoryWithContext(ctx context.Context) (*ExVirtualMemory, error) {
+	_, vmEx, err := fillFromMeminfoWithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return vmEx, nil
 }

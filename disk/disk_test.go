@@ -2,7 +2,7 @@
 package disk
 
 import (
-	"fmt"
+	"errors"
 	"runtime"
 	"sync"
 	"testing"
@@ -19,14 +19,20 @@ func TestUsage(t *testing.T) {
 		path = "C:"
 	}
 	v, err := Usage(path)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
+
 	require.NoError(t, err)
 	assert.Equalf(t, v.Path, path, "error %v", err)
 }
 
 func TestPartitions(t *testing.T) {
 	ret, err := Partitions(false)
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
+
 	if err != nil || len(ret) == 0 {
 		t.Errorf("error %v", err)
 	}
@@ -40,7 +46,10 @@ func TestPartitions(t *testing.T) {
 
 func TestIOCounters(t *testing.T) {
 	ret, err := IOCounters()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
+
 	require.NoError(t, err)
 	assert.NotEmptyf(t, ret, "ret is empty")
 	empty := IOCountersStat{}
@@ -81,7 +90,7 @@ func TestUsageStat_String(t *testing.T) {
 		Fstype: "ext4",
 	}
 	e := `{"path":"/","fstype":"ext4","total":1000,"free":2000,"used":3000,"usedPercent":50.1,"inodesTotal":4000,"inodesUsed":5000,"inodesFree":6000,"inodesUsedPercent":49.1}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "DiskUsageStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "DiskUsageStat string is invalid: %v", v)
 }
 
 func TestPartitionStat_String(t *testing.T) {
@@ -91,8 +100,8 @@ func TestPartitionStat_String(t *testing.T) {
 		Fstype:     "ext4",
 		// Opts:       []string{"ro"},
 	}
-	e := `{"device":"sd01","mountpoint":"/","fstype":"ext4"}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "DiskUsageStat string is invalid: %v", v)
+	e := `{"device":"sd01","mountpoint":"/","fstype":"ext4","opts":["ro"]}`
+	assert.JSONEqf(t, e, v.String(), "DiskUsageStat string is invalid: %v", v)
 }
 
 func TestIOCountersStat_String(t *testing.T) {
@@ -105,5 +114,5 @@ func TestIOCountersStat_String(t *testing.T) {
 		// SerialNumber: "SERIAL",
 	}
 	e := `{"readCount":100,"mergedReadCount":0,"writeCount":200,"mergedWriteCount":0,"readBytes":300,"writeBytes":400,"readTime":0,"writeTime":0,"iopsInProgress":0,"ioTime":0,"weightedIO":0,"name":"sd01","serialNumber":"SERIAL","label":""}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "DiskUsageStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "DiskUsageStat string is invalid: %v", v)
 }

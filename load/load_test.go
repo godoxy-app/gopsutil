@@ -2,7 +2,7 @@
 package load
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +13,9 @@ import (
 
 func TestAvg(t *testing.T) {
 	v, err := Avg()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 
 	empty := &AvgStat{}
@@ -28,13 +30,15 @@ func TestAvgStat_String(t *testing.T) {
 		Load15: 30.1,
 	}
 	e := `{"load1":10.1,"load5":20.1,"load15":30.1}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "LoadAvgStat string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "LoadAvgStat string is invalid: %v", v)
 	t.Log(e)
 }
 
 func TestMisc(t *testing.T) {
 	v, err := Misc()
-	common.SkipIfNotImplementedErr(t, err)
+	if errors.Is(err, common.ErrNotImplementedError) {
+		t.Skip("not implemented")
+	}
 	require.NoError(t, err)
 
 	empty := &MiscStat{}
@@ -51,7 +55,7 @@ func TestMiscStatString(t *testing.T) {
 		Ctxt:         3,
 	}
 	e := `{"procsTotal":4,"procsCreated":5,"procsRunning":1,"procsBlocked":2,"ctxt":3}`
-	assert.JSONEqf(t, e, fmt.Sprintf("%v", v), "TestMiscString string is invalid: %v", v)
+	assert.JSONEqf(t, e, v.String(), "TestMiscString string is invalid: %v", v)
 	t.Log(e)
 }
 
@@ -59,7 +63,9 @@ func BenchmarkLoad(b *testing.B) {
 	loadAvg := func(tb testing.TB) {
 		tb.Helper()
 		v, err := Avg()
-		common.SkipIfNotImplementedErr(tb, err)
+		if errors.Is(err, common.ErrNotImplementedError) {
+			tb.Skip("not implemented")
+		}
 		require.NoErrorf(tb, err, "error %v", err)
 		empty := &AvgStat{}
 		assert.NotSamef(tb, v, empty, "error load: %v", v)
