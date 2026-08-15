@@ -26,11 +26,6 @@ func TestVirtualMemory_Against_Psutil(t *testing.T) {
 	type pyVirtualMemory struct {
 		Total     uint64 `json:"total"`
 		Available uint64 `json:"available"`
-		Free      uint64 `json:"free"`
-		Buffers   uint64 `json:"buffers"`
-		Cached    uint64 `json:"cached"`
-		Shared    uint64 `json:"shared"`
-		Slab      uint64 `json:"slab"`
 	}
 
 	v, err := VirtualMemory()
@@ -44,7 +39,7 @@ func TestVirtualMemory_Against_Psutil(t *testing.T) {
 
 	// Total is static and read from the same source on every OS
 	// (linux: MemTotal, darwin: hw.memsize, windows: GlobalMemoryStatusEx).
-	require.Equal(t, py.Total, v.Total)
+	require.Equal(t, py.Total, v.Total())
 
 	// Used and UsedPercent are deliberately not compared: gopsutil defines
 	// Used = Total - Available while psutil uses total - free - buffers - cached.
@@ -62,18 +57,6 @@ func TestVirtualMemory_Against_Psutil(t *testing.T) {
 		// Available comes from the same source on every OS (linux:
 		// MemAvailable, darwin: free+inactive, windows: AvailPhys).
 		assert.NoError(c, pt.CheckWithinTolerance("Available", float64(py.Available), float64(v.Available), memRelTol, memAbsFloor))
-		if runtime.GOOS != "linux" {
-			// The fields below are only compared on linux. Free is known to
-			// differ on darwin: psutil subtracts speculative pages from the
-			// mach free count while gopsutil reports it raw.
-			return
-		}
-		// Both sides read /proc/meminfo and both fold SReclaimable into Cached.
-		assert.NoError(c, pt.CheckWithinTolerance("Free", float64(py.Free), float64(v.Free), memRelTol, memAbsFloor))
-		assert.NoError(c, pt.CheckWithinTolerance("Buffers", float64(py.Buffers), float64(v.Buffers), memRelTol, memAbsFloor))
-		assert.NoError(c, pt.CheckWithinTolerance("Cached", float64(py.Cached), float64(v.Cached), memRelTol, memAbsFloor))
-		assert.NoError(c, pt.CheckWithinTolerance("Shared", float64(py.Shared), float64(v.Shared), memRelTol, memAbsFloor))
-		assert.NoError(c, pt.CheckWithinTolerance("Slab", float64(py.Slab), float64(v.Slab), memRelTol, memAbsFloor))
 	}, pt.DefaultTimeout, pt.DefaultTick)
 }
 

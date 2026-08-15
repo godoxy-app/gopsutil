@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"os/exec"
 	"path"
@@ -58,29 +59,20 @@ func GetDockerStatWithContext(ctx context.Context) ([]CgroupDockerStat, error) {
 
 // GetDockerIDList returns a list of DockerID.
 // This requires certain permission.
-func GetDockerIDList() ([]string, error) {
+func GetDockerIDList() (iter.Seq[string], int, error) {
 	return GetDockerIDListWithContext(context.Background())
 }
 
-func GetDockerIDListWithContext(ctx context.Context) ([]string, error) {
+func GetDockerIDListWithContext(ctx context.Context) (iter.Seq[string], int, error) {
 	out, err := invoke.CommandWithContext(ctx, "docker", "ps", "-q", "--no-trunc")
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			return nil, ErrDockerNotAvailable
+			return nil, 0, ErrDockerNotAvailable
 		}
-		return []string{}, err
-	}
-	lines := strings.Split(string(out), "\n")
-	ret := make([]string, 0, len(lines))
-
-	for _, l := range lines {
-		if l == "" {
-			continue
-		}
-		ret = append(ret, l)
+		return nil, 0, err
 	}
 
-	return ret, nil
+	return common.SplitLinesSkipEmpty(out), common.CountLinesSkipEmpty(out), nil
 }
 
 // CgroupCPU returns specified cgroup id CPU status.
@@ -104,7 +96,7 @@ func CgroupCPUWithContext(ctx context.Context, containerID, base string) (*Cgrou
 	if err != nil {
 		return nil, err
 	}
-	lines, err := common.ReadLines(statfile)
+	lines, _, err := common.ReadLines(statfile)
 	if err != nil {
 		return nil, err
 	}
@@ -115,16 +107,19 @@ func CgroupCPUWithContext(ctx context.Context, containerID, base string) (*Cgrou
 
 	ret := &CgroupCPUStat{}
 	ret.CPU = containerID
-	for _, line := range lines {
-		fields := strings.Split(line, " ")
-		if fields[0] == "user" {
-			user, err := strconv.ParseFloat(fields[1], 64)
+	for line := range lines {
+		part0, part1, found := strings.Cut(line, " ")
+		if !found {
+			continue
+		}
+		if part0 == "user" {
+			user, err := strconv.ParseFloat(part1, 64)
 			if err == nil {
 				ret.User = user / cpu.ClocksPerSec
 			}
 		}
-		if fields[0] == "system" {
-			system, err := strconv.ParseFloat(fields[1], 64)
+		if part0 == "system" {
+			system, err := strconv.ParseFloat(part1, 64)
 			if err == nil {
 				ret.System = system / cpu.ClocksPerSec
 			}
@@ -186,18 +181,21 @@ func CgroupMemWithContext(ctx context.Context, containerID, base string) (*Cgrou
 	if containerID == "" {
 		containerID = "all"
 	}
-	lines, err := common.ReadLines(statfile)
+	lines, _, err := common.ReadLines(statfile)
 	if err != nil {
 		return nil, err
 	}
 	ret := &CgroupMemStat{ContainerID: containerID}
-	for _, line := range lines {
-		fields := strings.Split(line, " ")
-		v, err := strconv.ParseUint(fields[1], 10, 64)
+	for line := range lines {
+		part1, part2, found := strings.Cut(line, " ")
+		if !found {
+			continue
+		}
+		v, err := strconv.ParseUint(part2, 10, 64)
 		if err != nil {
 			continue
 		}
-		switch fields[0] {
+		switch part1 {
 		case "cache":
 			ret.Cache = v
 		case "rss":
@@ -309,12 +307,12 @@ func getCgroupMemFile(ctx context.Context, containerID, base, file string) (uint
 	if err != nil {
 		return 0, err
 	}
-	lines, err := common.ReadLines(statfile)
+	line, ok, err := common.ReadFileExpectOneLine(statfile)
 	if err != nil {
 		return 0, err
 	}
-	if len(lines) != 1 {
+	if !ok {
 		return 0, fmt.Errorf("wrong format file: %s", statfile)
 	}
-	return strconv.ParseUint(lines[0], 10, 64)
+	return strconv.ParseUint(line, 10, 64)
 }

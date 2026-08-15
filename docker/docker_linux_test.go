@@ -47,8 +47,8 @@ func TestGetDockerStat(_ *testing.T) {
 }
 
 func TestCgroupCPU(t *testing.T) {
-	v, _ := GetDockerIDList()
-	for _, id := range v {
+	v, _, _ := GetDockerIDList()
+	for id := range v {
 		v, err := CgroupCPUDockerWithContext(context.Background(), id)
 		require.NoError(t, err)
 		assert.NotEmptyf(t, v.CPU, "could not get CgroupCPU %v", v)
@@ -62,8 +62,8 @@ func TestCgroupCPUInvalidId(t *testing.T) {
 }
 
 func TestCgroupMem(t *testing.T) {
-	v, _ := GetDockerIDList()
-	for _, id := range v {
+	v, _, _ := GetDockerIDList()
+	for id := range v {
 		v, err := CgroupMemDocker(id)
 		require.NoError(t, err)
 		empty := &CgroupMemStat{}

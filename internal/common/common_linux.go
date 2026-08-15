@@ -80,16 +80,16 @@ func BootTimeWithContext(ctx context.Context, enableCache bool) (uint64, error) 
 	}
 
 	filename := HostProcWithContext(ctx, "uptime")
-	lines, err := ReadLines(filename)
+	content, ok, err := ReadFileExpectOneLine(filename)
 	if err != nil {
 		return handleBootTimeFileReadErr(err)
 	}
 	currentTime := float64(time.Now().UnixNano()) / float64(time.Second)
 
-	if len(lines) != 1 {
+	if !ok {
 		return 0, errors.New("wrong uptime format")
 	}
-	f := strings.Fields(lines[0])
+	f := strings.Fields(content)
 	b, err := strconv.ParseFloat(f[0], 64)
 	if err != nil {
 		return 0, err
@@ -168,33 +168,31 @@ func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 		role = "guest" // assume guest
 
 		if PathExists(filepath.Join(filename, "capabilities")) {
-			contents, err := ReadLines(filepath.Join(filename, "capabilities"))
-			if err == nil {
-				if StringsContains(contents, "control_d") {
-					role = "host"
-				}
+			contents, err := FileContains(filepath.Join(filename, "capabilities"), "control_d")
+			if err == nil && contents {
+				role = "host"
 			}
 		}
 	}
 
 	filename = HostProcWithContext(ctx, "modules")
 	if PathExists(filename) {
-		contents, err := ReadLines(filename)
-		if err == nil {
-			switch {
-			case StringsContains(contents, "kvm"):
+		ok, match, _ := FileContainsAny(filename, "kvm,hv_util,vboxdrv,vboxguest,vmware")
+		if ok {
+			switch match {
+			case "kvm":
 				system = "kvm"
 				role = "host"
-			case StringsContains(contents, "hv_util"):
+			case "hv_util":
 				system = "hyperv"
 				role = "guest"
-			case StringsContains(contents, "vboxdrv"):
+			case "vboxdrv":
 				system = "vbox"
 				role = "host"
-			case StringsContains(contents, "vboxguest"):
+			case "vboxguest":
 				system = "vbox"
 				role = "guest"
-			case StringsContains(contents, "vmware"):
+			case "vmware":
 				system = "vmware"
 				role = "guest"
 			}
@@ -203,24 +201,18 @@ func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 
 	filename = HostProcWithContext(ctx, "cpuinfo")
 	if PathExists(filename) {
-		contents, err := ReadLines(filename)
-		if err == nil {
-			if StringsContains(contents, "QEMU Virtual CPU") ||
-				StringsContains(contents, "Common KVM processor") ||
-				StringsContains(contents, "Common 32-bit KVM processor") {
-				system = "kvm"
-				role = "guest"
-			}
+		ok, _, _ := FileContainsAny(filename, "QEMU Virtual CPU,Common KVM processor,Common 32-bit KVM processor")
+		if ok {
+			system = "kvm"
+			role = "guest"
 		}
 	}
 
 	filename = HostProcWithContext(ctx, "bus/pci/devices")
 	if PathExists(filename) {
-		contents, err := ReadLines(filename)
-		if err == nil {
-			if StringsContains(contents, "virtio-pci") {
-				role = "guest"
-			}
+		ok, _ := FileContains(filename, "virtio-pci")
+		if ok {
+			role = "guest"
 		}
 	}
 
@@ -235,12 +227,9 @@ func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 
 	// not use dmidecode because it requires root
 	if PathExists(filepath.Join(filename, "self", "status")) {
-		contents, err := ReadLines(filepath.Join(filename, "self", "status"))
-		if err == nil {
-			if StringsContains(contents, "s_context:") ||
-				StringsContains(contents, "VxID:") {
-				system = "linux-vserver"
-			}
+		ok, _, _ := FileContainsAny(filepath.Join(filename, "self", "status"), "s_context:,VxID:")
+		if ok {
+			system = "linux-vserver"
 			// TODO: guest or host
 		}
 	}
@@ -257,21 +246,18 @@ func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 	}
 
 	if PathExists(filepath.Join(filename, "self", "cgroup")) {
-		contents, err := ReadLines(filepath.Join(filename, "self", "cgroup"))
-		if err == nil {
-			switch {
-			case StringsContains(contents, "lxc"):
+		ok, match, _ := FileContainsAny(filepath.Join(filename, "self", "cgroup"), "lxc,docker,machine-rkt")
+		if ok {
+			switch match {
+			case "lxc":
 				system = "lxc"
 				role = "guest"
-			case StringsContains(contents, "docker"):
+			case "docker":
 				system = "docker"
 				role = "guest"
-			case StringsContains(contents, "machine-rkt"):
+			case "machine-rkt":
 				system = "rkt"
 				role = "guest"
-			case PathExists("/usr/bin/lxc-version"):
-				system = "lxc"
-				role = "host"
 			}
 		}
 	}
@@ -307,20 +293,20 @@ func GetOSRelease() (platform, version string, err error) {
 }
 
 func GetOSReleaseWithContext(ctx context.Context) (platform, version string, err error) {
-	contents, err := ReadLines(HostEtcWithContext(ctx, "os-release"))
+	lines, _, err := ReadLines(HostEtcWithContext(ctx, "os-release"))
 	if err != nil {
 		return "", "", nil // return empty
 	}
-	for _, line := range contents {
-		field := strings.Split(line, "=")
-		if len(field) < 2 {
+	for line := range lines {
+		if strings.Count(line, "=") < 1 {
 			continue
 		}
-		switch field[0] {
+		key, value, _ := strings.Cut(line, "=")
+		switch key {
 		case "ID": // use ID for lowercase
-			platform = trimQuotes(field[1])
+			platform = trimQuotes(value)
 		case "VERSION_ID":
-			version = trimQuotes(field[1])
+			version = trimQuotes(value)
 		}
 	}
 

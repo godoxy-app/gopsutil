@@ -159,12 +159,6 @@ func IOCountersWithContext(_ context.Context, pernic bool) ([]IOCountersStat, er
 			}
 			c.BytesSent = uint64(row.OutOctets)
 			c.BytesRecv = uint64(row.InOctets)
-			c.PacketsSent = uint64(row.OutUcastPkts)
-			c.PacketsRecv = uint64(row.InUcastPkts)
-			c.Errin = uint64(row.InErrors)
-			c.Errout = uint64(row.OutErrors)
-			c.Dropin = uint64(row.InDiscards)
-			c.Dropout = uint64(row.OutDiscards)
 
 			counters = append(counters, c)
 		}
@@ -181,12 +175,6 @@ func IOCountersWithContext(_ context.Context, pernic bool) ([]IOCountersStat, er
 			}
 			c.BytesSent = uint64(row.OutOctets)
 			c.BytesRecv = uint64(row.InOctets)
-			c.PacketsSent = uint64(row.OutUcastPkts)
-			c.PacketsRecv = uint64(row.InUcastPkts)
-			c.Errin = uint64(row.InErrors)
-			c.Errout = uint64(row.OutErrors)
-			c.Dropin = uint64(row.InDiscards)
-			c.Dropout = uint64(row.OutDiscards)
 
 			counters = append(counters, c)
 		}

@@ -9,18 +9,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yusing/goutils/intern"
+	"github.com/yusing/goutils/num"
 
 	"github.com/shirou/gopsutil/v4/internal/common"
 )
 
 func TestTemperatureStat_String(t *testing.T) {
 	v := TemperatureStat{
-		SensorKey:   "CPU",
+		SensorKey:   intern.MakeValue("CPU"),
 		Temperature: 1.1,
-		High:        30.1,
-		Critical:    0.1,
 	}
-	s := `{"sensorKey":"CPU","temperature":1.1,"sensorHigh":30.1,"sensorCritical":0.1}`
+	loadOrStoreSensorTemps(v.SensorKey, num.NewPercentage(30.0), num.NewPercentage(0.4))
+	s := `{"name":"CPU","temperature":1.1,"high":30.0,"critical":0.4}`
 	assert.Equalf(t, s, v.String(), "TemperatureStat string is invalid, %v", v.String())
 }
 

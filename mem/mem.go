@@ -15,7 +15,7 @@ var invoke common.Invoker = common.Invoke{}
 // The other fields in this struct contain kernel specific values.
 type VirtualMemoryStat struct {
 	// Total amount of RAM on this system
-	Total uint64 `json:"total"`
+	Total_ common.PlaceHolder[uint64] `json:"total" swaggertype:"number"`
 
 	// RAM available for programs to allocate
 	//
@@ -30,58 +30,35 @@ type VirtualMemoryStat struct {
 	// Percentage of RAM used by programs
 	//
 	// This value is computed from the kernel specific values.
-	UsedPercent float64 `json:"usedPercent"`
+	UsedPercent_ common.PlaceHolder[float64] `json:"used_percent" swaggertype:"number"`
+}
 
-	// This is the kernel's notion of free memory; RAM chips whose bits nobody
-	// cares about the value of right now. For a human consumable number,
-	// Available is what you really want.
-	Free uint64 `json:"free"`
+type virtualMemoryStatFull struct {
+	Available   uint64  `json:"available"`
+	Used        uint64  `json:"used"`
+	Total       uint64  `json:"total"`
+	UsedPercent float64 `json:"used_percent"`
+}
 
-	// OS X / BSD specific numbers:
-	// http://www.macyourself.com/2010/02/17/what-is-free-wired-active-and-inactive-system-memory-ram/
-	Active   uint64 `json:"active"`
-	Inactive uint64 `json:"inactive"`
-	Wired    uint64 `json:"wired"`
+func (m VirtualMemoryStat) Total() uint64 {
+	return m.Available + m.Used
+}
 
-	// FreeBSD specific numbers:
-	// https://reviews.freebsd.org/D8467
-	Laundry uint64 `json:"laundry"`
+func (m VirtualMemoryStat) UsedPercent() float64 {
+	total := m.Total()
+	if total == 0 {
+		return 0
+	}
+	return float64(m.Used) / float64(total) * 100
+}
 
-	// Linux specific numbers
-	// https://blogs.oracle.com/linux/understanding-linux-kernel-memory-statistics
-	// https://www.kernel.org/doc/Documentation/filesystems/proc.txt
-	// https://www.kernel.org/doc/Documentation/vm/overcommit-accounting
-	// https://www.kernel.org/doc/Documentation/vm/transhuge.txt
-	//
-	Buffers        uint64 `json:"buffers"`
-	Cached         uint64 `json:"cached"`
-	WriteBack      uint64 `json:"writeBack"`
-	Dirty          uint64 `json:"dirty"`
-	WriteBackTmp   uint64 `json:"writeBackTmp"`
-	Shared         uint64 `json:"shared"`
-	Slab           uint64 `json:"slab"`
-	Sreclaimable   uint64 `json:"sreclaimable"`
-	Sunreclaim     uint64 `json:"sunreclaim"`
-	PageTables     uint64 `json:"pageTables"`
-	SwapCached     uint64 `json:"swapCached"`
-	CommitLimit    uint64 `json:"commitLimit"`
-	CommittedAS    uint64 `json:"committedAS"`
-	HighTotal      uint64 `json:"highTotal"`
-	HighFree       uint64 `json:"highFree"`
-	LowTotal       uint64 `json:"lowTotal"`
-	LowFree        uint64 `json:"lowFree"`
-	SwapTotal      uint64 `json:"swapTotal"`
-	SwapFree       uint64 `json:"swapFree"`
-	Mapped         uint64 `json:"mapped"`
-	VmallocTotal   uint64 `json:"vmallocTotal"`
-	VmallocUsed    uint64 `json:"vmallocUsed"`
-	VmallocChunk   uint64 `json:"vmallocChunk"`
-	HugePagesTotal uint64 `json:"hugePagesTotal"`
-	HugePagesFree  uint64 `json:"hugePagesFree"`
-	HugePagesRsvd  uint64 `json:"hugePagesRsvd"`
-	HugePagesSurp  uint64 `json:"hugePagesSurp"`
-	HugePageSize   uint64 `json:"hugePageSize"`
-	AnonHugePages  uint64 `json:"anonHugePages"`
+func (m VirtualMemoryStat) MarshalJSON() ([]byte, error) {
+	return json.Marshal(virtualMemoryStatFull{
+		Available:   m.Available,
+		Used:        m.Used,
+		Total:       m.Total(),
+		UsedPercent: m.UsedPercent(),
+	})
 }
 
 type SwapMemoryStat struct {
@@ -101,7 +78,7 @@ type SwapMemoryStat struct {
 }
 
 func (m VirtualMemoryStat) String() string {
-	s, _ := json.Marshal(m)
+	s, _ := m.MarshalJSON()
 	return string(s)
 }
 

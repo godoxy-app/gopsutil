@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"runtime"
 	"sort"
@@ -154,9 +155,8 @@ const (
 	RLIMIT_RTTIME     int32 = 15
 )
 
-func (p Process) String() string {
-	s, _ := json.Marshal(p)
-	return string(s)
+func (p *Process) String() string {
+	return fmt.Sprintf(`{"pid": %d}`, p.Pid)
 }
 
 func (o OpenFilesStat) String() string {
@@ -346,7 +346,7 @@ func (p *Process) MemoryPercentWithContext(ctx context.Context) (float32, error)
 	if err != nil {
 		return 0, err
 	}
-	total := machineMemory.Total
+	total := machineMemory.Total()
 
 	processMemory, err := p.MemoryInfoWithContext(ctx)
 	if err != nil {

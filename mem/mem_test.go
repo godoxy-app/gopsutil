@@ -22,43 +22,23 @@ func TestVirtualMemory(t *testing.T) {
 		t.Skip("not implemented")
 	}
 	require.NoError(t, err)
-	empty := &VirtualMemoryStat{}
-	assert.NotSamef(t, v, empty, "error %v", v)
 	t.Log(v)
 
-	assert.Positive(t, v.Total)
+	assert.Positive(t, v.Total())
 	assert.Positive(t, v.Available)
 	assert.Positive(t, v.Used)
 
-	total := v.Used + v.Free + v.Buffers + v.Cached
-	totalStr := "used + free + buffers + cached"
-	switch runtime.GOOS {
-	case "windows":
-		total = v.Used + v.Available
-		totalStr = "used + available"
-	case "darwin", "openbsd":
-		total = v.Used + v.Free + v.Cached + v.Inactive
-		totalStr = "used + free + cached + inactive"
-	case "freebsd":
-		total = v.Used + v.Free + v.Cached + v.Inactive + v.Laundry
-		totalStr = "used + free + cached + inactive + laundry"
-	case "linux":
-		total = v.Available + v.Used
-		totalStr = "used + available"
-	}
-	assert.Equalf(t, v.Total, total,
+	total := v.Used + v.Available
+	totalStr := "used + available"
+	assert.Equalf(t, v.Total(), total,
 		"Total should be computable (%v): %v", totalStr, v)
-
-	assert.True(t, runtime.GOOS == "windows" || v.Free > 0)
-	assert.Truef(t, runtime.GOOS == "windows" || v.Available > v.Free,
-		"Free should be a subset of Available: %v", v)
 
 	inDelta := assert.InDelta
 	if runtime.GOOS == "windows" {
 		inDelta = assert.InEpsilon
 	}
-	inDelta(t, v.UsedPercent,
-		100*float64(v.Used)/float64(v.Total), 0.1,
+	inDelta(t, v.UsedPercent(),
+		100*float64(v.Used)/float64(v.Total()), 0.1,
 		"UsedPercent should be how many percent of Total is Used: %v", v)
 }
 
@@ -76,14 +56,11 @@ func TestSwapMemory(t *testing.T) {
 
 func TestVirtualMemoryStat_String(t *testing.T) {
 	v := VirtualMemoryStat{
-		Total:       10,
-		Available:   20,
-		Used:        30,
-		UsedPercent: 30.1,
-		Free:        40,
+		Available: 20,
+		Used:      30,
 	}
 	t.Log(v)
-	e := `{"total":10,"available":20,"used":30,"usedPercent":30.1,"free":40,"active":0,"inactive":0,"wired":0,"laundry":0,"buffers":0,"cached":0,"writeBack":0,"dirty":0,"writeBackTmp":0,"shared":0,"slab":0,"sreclaimable":0,"sunreclaim":0,"pageTables":0,"swapCached":0,"commitLimit":0,"committedAS":0,"highTotal":0,"highFree":0,"lowTotal":0,"lowFree":0,"swapTotal":0,"swapFree":0,"mapped":0,"vmallocTotal":0,"vmallocUsed":0,"vmallocChunk":0,"hugePagesTotal":0,"hugePagesFree":0,"hugePagesRsvd":0,"hugePagesSurp":0,"hugePageSize":0,"anonHugePages":0}`
+	e := `{"available":20,"used":30,"total":50,"used_percent":60.0}`
 	assert.JSONEqf(t, e, v.String(), "VirtualMemoryStat string is invalid: %v", v)
 }
 

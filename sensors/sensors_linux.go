@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/shirou/gopsutil/v4/internal/common"
+	"github.com/yusing/goutils/num"
 )
 
 // from utmp.h
@@ -53,9 +54,11 @@ func TemperaturesWithContext(ctx context.Context) ([]TemperatureStat, error) {
 				continue
 			}
 
+			nameStr := strings.TrimSpace(string(name))
+			loadOrStoreSensorTemps(nameStr, num.NewPercentage(0), num.NewPercentage(0))
 			temperatures = append(temperatures, TemperatureStat{
-				SensorKey:   strings.TrimSpace(string(name)),
-				Temperature: float64(temperature) / 1000.0,
+				SensorKey:   common.InternString(nameStr),
+				Temperature: float32(temperature) / 1000.0,
 			})
 		}
 		return temperatures, warns.Reference()
@@ -114,12 +117,16 @@ func TemperaturesWithContext(ctx context.Context) ([]TemperatureStat, error) {
 			continue
 		}
 
+		loadOrStoreSensorTempsCompute(name, func() num.Percentage {
+			return num.NewPercentage(optionalValueReadFromFile(basepath+"_max") / hostTemperatureScale)
+		}, func() num.Percentage {
+			return num.NewPercentage(optionalValueReadFromFile(basepath+"_crit") / hostTemperatureScale)
+		})
+
 		// Add discovered temperature sensor to the list
 		temperatures = append(temperatures, TemperatureStat{
-			SensorKey:   name,
-			Temperature: temperature / hostTemperatureScale,
-			High:        optionalValueReadFromFile(basepath+"_max") / hostTemperatureScale,
-			Critical:    optionalValueReadFromFile(basepath+"_crit") / hostTemperatureScale,
+			SensorKey:   common.InternString(name),
+			Temperature: float32(temperature / hostTemperatureScale),
 		})
 	}
 

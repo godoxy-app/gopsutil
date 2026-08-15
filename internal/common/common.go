@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"math"
 	"net/url"
 	"os"
@@ -28,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unique"
+	"unsafe"
 
 	"github.com/shirou/gopsutil/v4/common"
 )
@@ -100,6 +103,10 @@ func (i FakeInvoke) CommandWithContext(_ context.Context, name string, arg ...st
 	return i.Command(name, arg...)
 }
 
+func InternString(s string) string {
+	return unique.Make(s).Value()
+}
+
 // ReadFile reads contents from a file
 func ReadFile(filename string) (string, error) {
 	content, err := os.ReadFile(filename)
@@ -107,13 +114,165 @@ func ReadFile(filename string) (string, error) {
 		return "", err
 	}
 
-	return string(content), nil
+	if len(content) == 0 {
+		return "", nil
+	}
+	// no copy
+	return unsafe.String(&content[0], len(content)), nil
+}
+
+func SplitLinesSkipEmpty(s []byte) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for {
+			i := bytes.IndexByte(s, '\n')
+			if i < 0 {
+				break
+			}
+			frag := bytes.TrimSpace(s[:i])
+			if len(frag) == 0 {
+				s = s[i+1:]
+				if len(s) == 0 {
+					return
+				}
+				continue
+			}
+			if !yield(unsafe.String(&frag[0], len(frag))) {
+				return
+			}
+			s = s[i+1:]
+			if len(s) == 0 {
+				return
+			}
+		}
+		s = bytes.TrimSpace(s)
+		if len(s) > 0 {
+			yield(unsafe.String(&s[0], len(s)))
+		}
+	}
+}
+
+func CountLinesSkipEmpty(s []byte) int {
+	n := 0
+	for {
+		i := bytes.IndexByte(s, '\n')
+		if i == -1 {
+			if len(bytes.TrimSpace(s)) > 0 { // last line counted as a line
+				n++
+			}
+			return n
+		}
+		if len(bytes.TrimSpace(s[:i])) > 0 {
+			n++
+		}
+		s = s[i+1:]
+	}
+}
+
+// skipNLines skips n lines from the beginning of the byte slice.
+// empty lines does not count.
+func skipNLines(s []byte, n int) []byte {
+	if n == 0 {
+		return s
+	}
+
+	for n > 0 {
+		idx := bytes.IndexByte(s, '\n')
+		if idx == -1 {
+			break
+		}
+		// only count non-empty lines
+		if len(bytes.TrimSpace(s[:idx])) > 0 {
+			n--
+		}
+		s = s[idx+1:]
+	}
+	return s
+}
+
+func iterEmpty() iter.Seq[string] {
+	return func(yield func(string) bool) {}
 }
 
 // ReadLines reads contents from a file and splits them by new lines.
-// A convenience wrapper to ReadLinesOffsetN(filename, 0, -1).
-func ReadLines(filename string) ([]string, error) {
-	return ReadLinesOffsetN(filename, 0, -1)
+// Empty lines will not be yielded.
+func ReadLines(filename string) (iter.Seq[string], int, error) {
+	return ReadLinesSkipFirstN(filename, 0)
+}
+
+// ReadLinesSkipFirstN reads contents from a file and splits them by new lines.
+// The n non-empty lines at the beginning are skipped.
+// Empty lines will not be yielded.
+func ReadLinesSkipFirstN(filename string, n int) (iter.Seq[string], int, error) {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	content = skipNLines(content, n)
+	if len(content) == 0 {
+		return iterEmpty(), 0, nil
+	}
+
+	numLines := CountLinesSkipEmpty(content)
+	return SplitLinesSkipEmpty(content), numLines, nil
+}
+
+func FileContains(filename, text string) (bool, error) {
+	textBytes := *(*[]byte)(unsafe.Pointer(&text))
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	r := bufio.NewScanner(f)
+	for r.Scan() {
+		if bytes.Contains(r.Bytes(), textBytes) {
+			return true, nil
+		}
+	}
+	return false, r.Err()
+}
+
+// FileContainsAny reads a file and returns true if the file contains any of the given texts.
+// The texts are separated by commas.
+// The first text that is found is returned.
+// If no text is found, false is returned.
+// If an error occurs, false and the error are returned.
+func FileContainsAny(filename string, texts string) (ok bool, found string, err error) {
+	textsBytes := *(*[]byte)(unsafe.Pointer(&texts))
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return false, "", err
+	}
+	defer f.Close()
+
+	r := bufio.NewScanner(f)
+	for r.Scan() {
+		for text := range bytes.SplitSeq(textsBytes, []byte(",")) {
+			if bytes.Contains(r.Bytes(), text) {
+				return true, string(text), nil
+			}
+		}
+	}
+	return false, "", r.Err()
+}
+
+// ReadFileExpectOneLine reads a file and returns the first line of the file.
+func ReadFileExpectOneLine(filename string) (content string, ok bool, err error) {
+	contentBytes, err := os.ReadFile(filename)
+	if err != nil {
+		return "", false, err
+	}
+	if len(contentBytes) == 0 {
+		return "", false, nil
+	}
+	if CountLinesSkipEmpty(contentBytes) != 1 {
+		return "", false, nil
+	}
+	return unsafe.String(&contentBytes[0], len(contentBytes)), true, nil
 }
 
 // ReadLine reads a file and returns the first occurrence of a line that is prefixed with prefix.
@@ -170,6 +329,24 @@ func ReadLinesOffsetN(filename string, offset uint, n int) ([]string, error) {
 	}
 
 	return ret, nil
+}
+
+func JoinLines(lines iter.Seq[string], n int) string {
+	switch n {
+	case 0:
+		return ""
+	}
+
+	collected := make([]string, n)
+	i := 0
+	for line := range lines {
+		collected[i] = line
+		i++
+		if i == n {
+			break
+		}
+	}
+	return strings.Join(collected, "\n")
 }
 
 func IntToString(orig []int8) string {

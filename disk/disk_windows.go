@@ -91,15 +91,9 @@ func UsageWithContext(_ context.Context, path string) (*UsageStat, error) {
 		return nil, err
 	}
 	ret := &UsageStat{
-		Path:        path,
-		Total:       uint64(lpTotalNumberOfBytes),
-		Free:        uint64(lpTotalNumberOfFreeBytes),
-		Used:        uint64(lpTotalNumberOfBytes) - uint64(lpTotalNumberOfFreeBytes),
-		UsedPercent: (float64(lpTotalNumberOfBytes) - float64(lpTotalNumberOfFreeBytes)) / float64(lpTotalNumberOfBytes) * 100,
-		// InodesTotal: 0,
-		// InodesFree: 0,
-		// InodesUsed: 0,
-		// InodesUsedPercent: 0,
+		Path: path,
+		Free: uint64(lpTotalNumberOfFreeBytes),
+		Used: uint64(lpTotalNumberOfBytes) - uint64(lpTotalNumberOfFreeBytes),
 	}
 	return ret, nil
 }
@@ -287,7 +281,6 @@ func buildPartitionStat(path string) (PartitionStat, error) {
 			Mountpoint: path,
 			Device:     path,
 			Fstype:     string(bytes.ReplaceAll(fsName, []byte("\x00"), []byte(""))),
-			Opts:       opts,
 		}, nil
 	}
 
@@ -346,9 +339,6 @@ func IOCountersWithContext(_ context.Context, names ...string) (map[string]IOCou
 				WriteBytes: uint64(dPerformance.BytesWritten),
 				ReadCount:  uint64(dPerformance.ReadCount),
 				WriteCount: uint64(dPerformance.WriteCount),
-				ReadTime:   uint64(dPerformance.ReadTime / 10000 / 1000), // convert to ms: https://github.com/giampaolo/psutil/issues/1012
-				WriteTime:  uint64(dPerformance.WriteTime / 10000 / 1000),
-				Name:       path,
 			}
 		}
 	}

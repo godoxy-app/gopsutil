@@ -82,7 +82,18 @@ func TestCountsAgainstLscpu(t *testing.T) {
 		t.Errorf("missing info from lscpu: threadsPerCore=%d coresPerSocket=%d sockets=%d", threadsPerCore, coresPerSocket, sockets)
 	}
 	expectedPhysical := coresPerSocket * sockets * books * drawers
-	expectedLogical := expectedPhysical * threadsPerCore
+
+	cmd = exec.CommandContext(context.Background(), "lscpu", "--parse=CPU")
+	cmd.Env = []string{"LC_ALL=C"}
+	out, err = cmd.Output()
+	require.NoError(t, err)
+	expectedLogical := 0
+	for line := range strings.Lines(string(out)) {
+		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
+			expectedLogical++
+		}
+	}
+	require.Positive(t, expectedLogical, "missing logical CPUs from lscpu")
 	physical, err := Counts(false)
 	if errors.Is(err, common.ErrNotImplementedError) {
 		t.Skip("not implemented")

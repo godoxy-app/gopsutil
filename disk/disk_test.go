@@ -78,18 +78,12 @@ func TestIOCounters_concurrency_on_darwin_cgo(t *testing.T) {
 
 func TestUsageStat_String(t *testing.T) {
 	v := UsageStat{
-		Path:              "/",
-		Total:             1000,
-		Free:              2000,
-		Used:              3000,
-		UsedPercent:       50.1,
-		InodesTotal:       4000,
-		InodesUsed:        5000,
-		InodesFree:        6000,
-		InodesUsedPercent: 49.1,
-		Fstype:            "ext4",
+		Path:   "/",
+		Fstype: "ext4",
+		Free:   2000,
+		Used:   3000,
 	}
-	e := `{"path":"/","fstype":"ext4","total":1000,"free":2000,"used":3000,"usedPercent":50.1,"inodesTotal":4000,"inodesUsed":5000,"inodesFree":6000,"inodesUsedPercent":49.1}`
+	e := `{"path":"/","fstype":"ext4","total":5000,"free":2000,"used":3000,"used_percent":60.0}`
 	assert.JSONEqf(t, e, v.String(), "DiskUsageStat string is invalid: %v", v)
 }
 
@@ -98,21 +92,19 @@ func TestPartitionStat_String(t *testing.T) {
 		Device:     "sd01",
 		Mountpoint: "/",
 		Fstype:     "ext4",
-		Opts:       []string{"ro"},
 	}
-	e := `{"device":"sd01","mountpoint":"/","fstype":"ext4","opts":["ro"]}`
+	e := `{"device":"sd01","mountpoint":"/","fstype":"ext4"}`
 	assert.JSONEqf(t, e, v.String(), "DiskUsageStat string is invalid: %v", v)
 }
 
 func TestIOCountersStat_String(t *testing.T) {
 	v := IOCountersStat{
-		Name:         "sd01",
-		ReadCount:    100,
-		WriteCount:   200,
-		ReadBytes:    300,
-		WriteBytes:   400,
-		SerialNumber: "SERIAL",
+		Name:       "sd01",
+		ReadCount:  100,
+		WriteCount: 200,
+		ReadBytes:  300,
+		WriteBytes: 400,
 	}
-	e := `{"readCount":100,"mergedReadCount":0,"writeCount":200,"mergedWriteCount":0,"readBytes":300,"writeBytes":400,"readTime":0,"writeTime":0,"iopsInProgress":0,"ioTime":0,"weightedIO":0,"name":"sd01","serialNumber":"SERIAL","label":""}`
+	e := `{"name":"sd01","readBytes":300,"writeBytes":400,"readCount":100,"writeCount":200,"iops":0,"readSpeed":0.0,"writeSpeed":0.0}`
 	assert.JSONEqf(t, e, v.String(), "DiskUsageStat string is invalid: %v", v)
 }

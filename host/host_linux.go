@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"iter"
 	"os"
 	"regexp"
 	"strings"
@@ -38,27 +39,26 @@ func HostIDWithContext(ctx context.Context) (string, error) {
 	// In order to read this file, needs to be supported by kernel/arch and run as root
 	// so having fallback is important
 	case common.PathExists(sysProductUUID):
-		lines, err := common.ReadLines(sysProductUUID)
-		if err == nil && len(lines) > 0 && lines[0] != "" {
-			return strings.ToLower(lines[0]), nil
+		line, ok, err := common.ReadFileExpectOneLine(sysProductUUID)
+		if err == nil && ok {
+			return strings.ToLower(line), nil
 		}
 		fallthrough
 	// Fallback on GNU Linux systems with systemd, readable by everyone
 	case common.PathExists(machineID):
-		lines, err := common.ReadLines(machineID)
-		if err == nil && len(lines) > 0 && len(lines[0]) == 32 {
-			st := lines[0]
+		line, ok, err := common.ReadFileExpectOneLine(machineID)
+		if err == nil && ok && len(line) == 32 {
+			st := line
 			return fmt.Sprintf("%s-%s-%s-%s-%s", st[0:8], st[8:12], st[12:16], st[16:20], st[20:32]), nil
 		}
 		fallthrough
 	// Not stable between reboot, but better than nothing
 	default:
-		lines, err := common.ReadLines(procSysKernelRandomBootID)
-		if err == nil && len(lines) > 0 && lines[0] != "" {
-			return strings.ToLower(lines[0]), nil
+		line, ok, err := common.ReadFileExpectOneLine(procSysKernelRandomBootID)
+		if err == nil && ok {
+			return strings.ToLower(line), nil
 		}
 	}
-
 	return "", nil
 }
 
@@ -123,11 +123,11 @@ func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 func getlsbStruct(ctx context.Context) (*lsbStruct, error) {
 	ret := &lsbStruct{}
 	if common.PathExists(common.HostEtcWithContext(ctx, "lsb-release")) {
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "lsb-release"))
+		contents, _, err := common.ReadLines(common.HostEtcWithContext(ctx, "lsb-release"))
 		if err != nil {
 			return ret, err // return empty
 		}
-		for _, line := range contents {
+		for line := range contents {
 			field := strings.Split(line, "=")
 			if len(field) < 2 {
 				continue
@@ -179,22 +179,22 @@ func PlatformInformationWithContext(ctx context.Context) (platform, family, vers
 	switch {
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "oracle-release")):
 		platform = "oracle"
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "oracle-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "oracle-release"))
 		if err == nil {
-			version = getRedhatishVersion(contents)
+			version = getRedhatishVersion(contents, numLines)
 		}
 
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "enterprise-release")):
 		platform = "oracle"
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "enterprise-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "enterprise-release"))
 		if err == nil {
-			version = getRedhatishVersion(contents)
+			version = getRedhatishVersion(contents, numLines)
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "slackware-version")):
 		platform = "slackware"
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "slackware-version"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "slackware-version"))
 		if err == nil {
-			version = getSlackwareVersion(contents)
+			version = getSlackwareVersion(contents, numLines)
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "debian_version")):
 		switch lsb.ID {
@@ -222,40 +222,40 @@ func PlatformInformationWithContext(ctx context.Context) (platform, family, vers
 			} else {
 				platform = "debian"
 			}
-			contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "debian_version"))
-			if err == nil && len(contents) > 0 && contents[0] != "" {
-				version = contents[0]
+			contents, ok, err := common.ReadFileExpectOneLine(common.HostEtcWithContext(ctx, "debian_version"))
+			if err == nil && ok {
+				version = contents
 			}
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "neokylin-release")):
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "neokylin-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "neokylin-release"))
 		if err == nil {
-			version = getRedhatishVersion(contents)
-			platform = getRedhatishPlatform(contents)
+			version = getRedhatishVersion(contents, numLines)
+			platform = getRedhatishPlatform(contents, numLines)
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "redhat-release")):
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "redhat-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "redhat-release"))
 		if err == nil {
-			version = getRedhatishVersion(contents)
-			platform = getRedhatishPlatform(contents)
+			version = getRedhatishVersion(contents, numLines)
+			platform = getRedhatishPlatform(contents, numLines)
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "system-release")):
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "system-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "system-release"))
 		if err == nil {
-			version = getRedhatishVersion(contents)
-			platform = getRedhatishPlatform(contents)
+			version = getRedhatishVersion(contents, numLines)
+			platform = getRedhatishPlatform(contents, numLines)
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "gentoo-release")):
 		platform = "gentoo"
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "gentoo-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "gentoo-release"))
 		if err == nil {
-			version = getRedhatishVersion(contents)
+			version = getRedhatishVersion(contents, numLines)
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "SuSE-release")):
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "SuSE-release"))
+		contents, numLines, err := common.ReadLines(common.HostEtcWithContext(ctx, "SuSE-release"))
 		if err == nil {
 			version = getSuseVersion(contents)
-			platform = getSusePlatform(contents)
+			platform = getSusePlatform(contents, numLines)
 		}
 		// TODO: slackware detection
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "arch-release")):
@@ -263,9 +263,9 @@ func PlatformInformationWithContext(ctx context.Context) (platform, family, vers
 		version = lsb.Release
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "alpine-release")):
 		platform = "alpine"
-		contents, err := common.ReadLines(common.HostEtcWithContext(ctx, "alpine-release"))
-		if err == nil && len(contents) > 0 && contents[0] != "" {
-			version = contents[0]
+		content, ok, err := common.ReadFileExpectOneLine(common.HostEtcWithContext(ctx, "alpine-release"))
+		if err == nil && ok {
+			version = content
 		}
 	case common.PathExistsWithContents(common.HostEtcWithContext(ctx, "os-release")):
 		p, v, err := common.GetOSReleaseWithContext(ctx)
@@ -333,16 +333,16 @@ func KernelVersionWithContext(_ context.Context) (version string, err error) {
 	return unix.ByteSliceToString(utsname.Release[:]), nil
 }
 
-func getSlackwareVersion(contents []string) string {
-	c := strings.ToLower(strings.Join(contents, ""))
+func getSlackwareVersion(contents iter.Seq[string], numLines int) string {
+	c := strings.ToLower(common.JoinLines(contents, numLines))
 	c = strings.Replace(c, "slackware ", "", 1)
 	return c
 }
 
 var redhatishReleaseMatch = regexp.MustCompile(`release (\w[\d.]*)`)
 
-func getRedhatishVersion(contents []string) string {
-	c := strings.ToLower(strings.Join(contents, ""))
+func getRedhatishVersion(contents iter.Seq[string], numLines int) string {
+	c := strings.ToLower(common.JoinLines(contents, numLines))
 
 	if strings.Contains(c, "rawhide") {
 		return "rawhide"
@@ -353,8 +353,8 @@ func getRedhatishVersion(contents []string) string {
 	return ""
 }
 
-func getRedhatishPlatform(contents []string) string {
-	c := strings.ToLower(strings.Join(contents, ""))
+func getRedhatishPlatform(contents iter.Seq[string], numLines int) string {
+	c := strings.ToLower(common.JoinLines(contents, numLines))
 
 	if strings.Contains(c, "red hat") {
 		return "redhat"
@@ -369,9 +369,9 @@ var (
 	susePatchLevelMatch = regexp.MustCompile(`PATCHLEVEL = (\d+)`)
 )
 
-func getSuseVersion(contents []string) string {
+func getSuseVersion(contents iter.Seq[string]) string {
 	version := ""
-	for _, line := range contents {
+	for line := range contents {
 		if matches := suseVersionMatch.FindStringSubmatch(line); matches != nil {
 			version = matches[1]
 		} else if matches = susePatchLevelMatch.FindStringSubmatch(line); matches != nil {
@@ -381,8 +381,8 @@ func getSuseVersion(contents []string) string {
 	return version
 }
 
-func getSusePlatform(contents []string) string {
-	c := strings.ToLower(strings.Join(contents, ""))
+func getSusePlatform(contents iter.Seq[string], numLines int) string {
+	c := strings.ToLower(common.JoinLines(contents, numLines))
 	if strings.Contains(c, "opensuse") {
 		return "opensuse"
 	}

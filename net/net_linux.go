@@ -4,7 +4,6 @@
 package net
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -45,22 +44,24 @@ func IOCountersWithContext(ctx context.Context, pernic bool) ([]IOCountersStat, 
 }
 
 func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string) ([]IOCountersStat, error) {
-	lines, err := common.ReadLines(filename)
+	lines, numLines, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, err
 	}
-
-	if len(lines) < 2 {
-		return nil, fmt.Errorf("malformed %s: expected at least 2 header lines, got %d", filename, len(lines))
+	if numLines < 2 {
+		return nil, fmt.Errorf("malformed %s: expected at least 2 header lines, got %d", filename, numLines)
 	}
 
-	statlen := len(lines) - 1
+	ret := make([]IOCountersStat, numLines-2)
+	idx := 0
+	headerLines := 0
 
-	ret := make([]IOCountersStat, 0, statlen)
-
-	for _, line := range lines[2:] {
-		// Split interface name and stats data at the last ":"
-		separatorPos := strings.LastIndex(line, ":")
+	for line := range lines {
+		if headerLines < 2 {
+			headerLines++
+			continue
+		}
+		separatorPos := strings.LastIndexByte(line, ':')
 		if separatorPos == -1 {
 			continue
 		}
@@ -80,58 +81,60 @@ func IOCountersByFileWithContext(_ context.Context, pernic bool, filename string
 		if err != nil {
 			return ret, err
 		}
-		packetsRecv, err := strconv.ParseUint(fields[1], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		errIn, err := strconv.ParseUint(fields[2], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		dropIn, err := strconv.ParseUint(fields[3], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		fifoIn, err := strconv.ParseUint(fields[4], 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// packetsRecv, err := strconv.ParseUint(fields[1], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// errIn, err := strconv.ParseUint(fields[2], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// dropIn, err := strconv.ParseUint(fields[3], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// fifoIn, err := strconv.ParseUint(fields[4], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 		bytesSent, err := strconv.ParseUint(fields[8], 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		packetsSent, err := strconv.ParseUint(fields[9], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		errOut, err := strconv.ParseUint(fields[10], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		dropOut, err := strconv.ParseUint(fields[11], 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		fifoOut, err := strconv.ParseUint(fields[12], 10, 64)
-		if err != nil {
-			return ret, err
-		}
+		// packetsSent, err := strconv.ParseUint(fields[9], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// errOut, err := strconv.ParseUint(fields[10], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// dropOut, err := strconv.ParseUint(fields[11], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
+		// fifoOut, err := strconv.ParseUint(fields[12], 10, 64)
+		// if err != nil {
+		// 	return ret, err
+		// }
 
-		nic := IOCountersStat{
-			Name:        interfaceName,
-			BytesRecv:   bytesRecv,
-			PacketsRecv: packetsRecv,
-			Errin:       errIn,
-			Dropin:      dropIn,
-			Fifoin:      fifoIn,
-			BytesSent:   bytesSent,
-			PacketsSent: packetsSent,
-			Errout:      errOut,
-			Dropout:     dropOut,
-			Fifoout:     fifoOut,
+		ret[idx] = IOCountersStat{
+			// Name:        interfaceName,
+			BytesRecv: bytesRecv,
+			// PacketsRecv: packetsRecv,
+			// Errin:       errIn,
+			// Dropin:      dropIn,
+			// Fifoin:      fifoIn,
+			BytesSent: bytesSent,
+			// PacketsSent: packetsSent,
+			// Errout:      errOut,
+			// Dropout:     dropOut,
+			// Fifoout:     fifoOut,
 		}
-		ret = append(ret, nic)
+		idx++
 	}
+
+	ret = ret[:idx]
 
 	if !pernic {
 		return getIOCountersAll(ret), nil
@@ -161,19 +164,23 @@ func ProtoCountersWithContext(ctx context.Context, protocols []string) ([]ProtoC
 	}
 
 	filename := common.HostProcWithContext(ctx, "net/snmp")
-	lines, err := common.ReadLines(filename)
+	file, err := common.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
+	lines := strings.Split(file, "\n")
 	linecount := len(lines)
 	for i := 0; i < linecount; i++ {
 		line := lines[i]
-		r := strings.IndexRune(line, ':')
-		if r == -1 {
+		if line == "" {
+			continue
+		}
+		proto, value, ok := strings.Cut(line, ":")
+		if !ok {
 			return nil, errors.New(filename + " is not formatted correctly, expected ':'.")
 		}
-		proto := strings.ToLower(line[:r])
+		proto = strings.ToLower(proto)
 		if !protos[proto] {
 			// skip protocol and data line
 			i++
@@ -181,11 +188,15 @@ func ProtoCountersWithContext(ctx context.Context, protocols []string) ([]ProtoC
 		}
 
 		// Read header line
-		statNames := strings.Split(line[r+2:], " ")
+		statNames := strings.Split(value[1:], " ")
 
 		// Read data line
 		i++
-		statValues := strings.Split(lines[i][r+2:], " ")
+		_, data, ok := strings.Cut(lines[i], ":")
+		if !ok {
+			return nil, errors.New(filename + " is not formatted correctly, expected ':' in data line.")
+		}
+		statValues := strings.Split(data[1:], " ")
 		if len(statNames) != len(statValues) {
 			return nil, errors.New(filename + " is not formatted correctly, expected same number of columns.")
 		}
@@ -238,14 +249,14 @@ func ConntrackStatsWithContext(ctx context.Context, percpu bool) ([]ConntrackSta
 // from `filename`
 // If 'percpu' is false, the result will contain exactly one item with totals/summary
 func conntrackStatsFromFile(filename string, percpu bool) ([]ConntrackStat, error) {
-	lines, err := common.ReadLines(filename)
+	lines, _, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	statlist := NewConntrackStatList()
 
-	for _, line := range lines {
+	for line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) == 17 && fields[0] != "entries" {
 			statlist.Append(NewConntrackStat(
@@ -695,17 +706,14 @@ func processInet(file string, kind netConnectionKindType, inodes map[string][]in
 	// This minimizes duplicates in the returned connections
 	// For more info:
 	// https://github.com/shirou/gopsutil/pull/361
-	contents, err := os.ReadFile(file)
+	lines, _, err := common.ReadLinesSkipFirstN(file, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	lines := bytes.Split(contents, []byte("\n"))
-
 	var ret []connTmp
-	// skip first line
-	for _, line := range lines[1:] {
-		l := strings.Fields(string(line))
+	for line := range lines {
+		l := strings.Fields(line)
 		if len(l) < 10 {
 			continue
 		}
@@ -757,16 +765,13 @@ func processUnix(file string, kind netConnectionKindType, inodes map[string][]in
 	// This minimizes duplicates in the returned connections
 	// For more info:
 	// https://github.com/shirou/gopsutil/pull/361
-	contents, err := os.ReadFile(file)
+	lines, _, err := common.ReadLinesSkipFirstN(file, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	lines := bytes.Split(contents, []byte("\n"))
-
 	var ret []connTmp
-	// skip first line
-	for _, line := range lines[1:] {
+	for line := range lines {
 		tokens := strings.Fields(string(line))
 		if len(tokens) < 7 {
 			continue

@@ -7,11 +7,11 @@ import (
 )
 
 func TestSysAdvancedDockerInfo(_ *testing.T) {
-	list, err := GetDockerIDList()
+	list, _, err := GetDockerIDList()
 	if err != nil {
 		fmt.Println(err)
 	}
-	for _, item := range list {
+	for item := range list {
 		fmt.Println(item)
 	}
 	/*docker,err := SysAdvancedDockerInfo()

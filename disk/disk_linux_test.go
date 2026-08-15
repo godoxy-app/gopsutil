@@ -5,11 +5,23 @@ package disk
 
 import (
 	"context"
+	"iter"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func iterSlice(lines []string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for _, line := range lines {
+			if !yield(line) {
+				return
+			}
+		}
+		return
+	}
+}
 
 func Test_parseFieldsOnMountinfo(t *testing.T) {
 	lines := []string{
@@ -29,20 +41,20 @@ func Test_parseFieldsOnMountinfo(t *testing.T) {
 		"all": {
 			all: true,
 			expect: []PartitionStat{
-				{Device: "/dev/sda1", Mountpoint: "/", Fstype: "ext4", Opts: []string{"rw", "noatime"}},
-				{Device: "/dev/sda2", Mountpoint: "/foo", Fstype: "ext4", Opts: []string{"rw", "noatime"}},
-				{Device: "/dev/sda2", Mountpoint: "/foo/bar", Fstype: "ext4", Opts: []string{"rw", "noatime", "bind"}},
-				{Device: "-", Mountpoint: "/dev/shm", Fstype: "tmpfs", Opts: []string{"rw", "nosuid", "nodev", "noexec", "relatime"}},
-				{Device: "net:[12345]", Mountpoint: "/run/netns/foo", Fstype: "nsfs", Opts: []string{"rw"}},
-				{Device: "sysfs", Mountpoint: "/sys", Fstype: "sysfs", Opts: []string{"rw", "nosuid", "nodev", "noexec", "noatime"}},
-				{Device: "none", Mountpoint: "/run", Fstype: "tmpfs", Opts: []string{"rw", "nosuid", "nodev"}},
+				{Device: "/dev/sda1", Mountpoint: "/", Fstype: "ext4"},
+				{Device: "/dev/sda2", Mountpoint: "/foo", Fstype: "ext4"},
+				{Device: "/dev/sda2", Mountpoint: "/foo/bar", Fstype: "ext4"},
+				{Device: "-", Mountpoint: "/dev/shm", Fstype: "tmpfs"},
+				{Device: "net:[12345]", Mountpoint: "/run/netns/foo", Fstype: "nsfs"},
+				{Device: "sysfs", Mountpoint: "/sys", Fstype: "sysfs"},
+				{Device: "none", Mountpoint: "/run", Fstype: "tmpfs"},
 			},
 		},
 		"not all": {
 			all: false,
 			expect: []PartitionStat{
-				{Device: "/dev/sda1", Mountpoint: "/", Fstype: "ext4", Opts: []string{"rw", "noatime"}},
-				{Device: "/dev/sda2", Mountpoint: "/foo", Fstype: "ext4", Opts: []string{"rw", "noatime"}},
+				{Device: "/dev/sda1", Mountpoint: "/", Fstype: "ext4"},
+				{Device: "/dev/sda2", Mountpoint: "/foo", Fstype: "ext4"},
 			},
 		},
 	}
@@ -53,7 +65,7 @@ func Test_parseFieldsOnMountinfo(t *testing.T) {
 
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			actual, err := parseFieldsOnMountinfo(context.Background(), lines, c.all, fs, "")
+			actual, err := parseFieldsOnMountinfo(context.Background(), iterSlice(lines), len(lines), c.all, fs, "")
 			require.NoError(t, err)
 			assert.Equal(t, c.expect, actual)
 		})
@@ -71,32 +83,14 @@ func Test_parseFieldsOnMountinfo_multiMount(t *testing.T) {
 		"1210 1184 259:4 /                                         /host/root         ro,relatime shared:1 - ext4 /dev/nvme0n1p3 rw",
 	}
 
-	actual, err := parseFieldsOnMountinfo(context.Background(), lines, true, nil, "")
+	actual, err := parseFieldsOnMountinfo(context.Background(), iterSlice(lines), len(lines), true, nil, "")
 	require.NoError(t, err)
 
 	expected := []PartitionStat{
-		{Device: "/dev/nvme0n1p3", Mountpoint: "/tmp", Fstype: "ext4", Opts: []string{"rw", "relatime", "bind"}},
-		{Device: "/dev/nvme0n1p3", Mountpoint: "/etc/datadog-agent", Fstype: "ext4", Opts: []string{"rw", "relatime", "bind"}},
-		{Device: "/dev/nvme0n1p3", Mountpoint: "/etc/passwd", Fstype: "ext4", Opts: []string{"ro", "relatime", "bind"}},
-		{Device: "/dev/nvme0n1p3", Mountpoint: "/host/root", Fstype: "ext4", Opts: []string{"ro", "relatime"}},
-	}
-	assert.Equal(t, expected, actual)
-}
-
-func Test_parseFieldsOnMountinfo_effectiveReadWriteMode(t *testing.T) {
-	lines := []string{
-		"36 35 253:0 / / rw,relatime - ext4 /dev/mapper/vg1-lv_root ro,seclabel,relatime,commit=60,data=ordered",
-		"37 35 253:1 / /mnt/readonly ro,relatime - ext4 /dev/mapper/vg1-lv_ro rw,seclabel,relatime,commit=60,data=ordered",
-		"38 35 253:2 / /mnt/readwrite rw,relatime - ext4 /dev/mapper/vg1-lv_rw rw,seclabel,relatime,commit=60,data=ordered",
-	}
-
-	actual, err := parseFieldsOnMountinfo(context.Background(), lines, true, nil, "")
-	require.NoError(t, err)
-
-	expected := []PartitionStat{
-		{Device: "/dev/mapper/vg1-lv_root", Mountpoint: "/", Fstype: "ext4", Opts: []string{"ro", "relatime"}},
-		{Device: "/dev/mapper/vg1-lv_ro", Mountpoint: "/mnt/readonly", Fstype: "ext4", Opts: []string{"ro", "relatime"}},
-		{Device: "/dev/mapper/vg1-lv_rw", Mountpoint: "/mnt/readwrite", Fstype: "ext4", Opts: []string{"rw", "relatime"}},
+		{Device: "/dev/nvme0n1p3", Mountpoint: "/tmp", Fstype: "ext4"},
+		{Device: "/dev/nvme0n1p3", Mountpoint: "/etc/datadog-agent", Fstype: "ext4"},
+		{Device: "/dev/nvme0n1p3", Mountpoint: "/etc/passwd", Fstype: "ext4"},
+		{Device: "/dev/nvme0n1p3", Mountpoint: "/host/root", Fstype: "ext4"},
 	}
 	assert.Equal(t, expected, actual)
 }
@@ -125,50 +119,52 @@ func Test_parseFieldsOnMountinfo_issue2100(t *testing.T) {
 
 	fs := []string{"ext4", "btrfs", "zfs"}
 
-	actual, err := parseFieldsOnMountinfo(context.Background(), lines, false, fs, "")
+	actual, err := parseFieldsOnMountinfo(context.Background(), iterSlice(lines), len(lines), false, fs, "")
 	require.NoError(t, err)
 
 	expected := []PartitionStat{
-		{Device: "/dev/sdd", Mountpoint: "/mnt/foo", Fstype: "btrfs", Opts: []string{"rw", "noatime"}},
-		{Device: "/dev/sdd", Mountpoint: "/mnt/bar", Fstype: "btrfs", Opts: []string{"rw", "relatime"}},
-		{Device: "pool/dataset", Mountpoint: "/data", Fstype: "zfs", Opts: []string{"rw", "noatime"}},
+		{Device: "/dev/sdd", Mountpoint: "/mnt/foo", Fstype: "btrfs"},
+		{Device: "/dev/sdd", Mountpoint: "/mnt/bar", Fstype: "btrfs"},
+		{Device: "pool/dataset", Mountpoint: "/data", Fstype: "zfs"},
 	}
 	assert.Equal(t, expected, actual)
 }
 
 func Test_parseFieldsOnMounts(t *testing.T) {
-	fs := []string{"sysfs", "tmpfs"}
+	// NOTE: excluded by shouldIncludeFsType
+	//
+	// fs := []string{"sysfs", "tmpfs"}
 
-	lines := []string{
-		"sysfs /sys sysfs rw,nosuid,nodev,noexec,noatime 0 0",
-		"none /run tmpfs rw,nosuid,nodev,mode=755 0 0",
-	}
+	// lines := []string{
+	// 	"sysfs /sys sysfs rw,nosuid,nodev,noexec,noatime 0 0",
+	// 	"none /run tmpfs rw,nosuid,nodev,mode=755 0 0",
+	// }
 
-	cases := map[string]struct {
-		all    bool
-		expect []PartitionStat
-	}{
-		"all": {
-			all: true,
-			expect: []PartitionStat{
-				{Device: "sysfs", Mountpoint: "/sys", Fstype: "sysfs", Opts: []string{"rw", "nosuid", "nodev", "noexec", "noatime"}},
-				{Device: "none", Mountpoint: "/run", Fstype: "tmpfs", Opts: []string{"rw", "nosuid", "nodev", "mode=755"}},
-			},
-		},
-		"not all": {
-			all: false,
-			expect: []PartitionStat{
-				{Device: "sysfs", Mountpoint: "/sys", Fstype: "sysfs", Opts: []string{"rw", "nosuid", "nodev", "noexec", "noatime"}},
-			},
-		},
-	}
+	// cases := map[string]struct {
+	// 	all    bool
+	// 	expect []PartitionStat
+	// }{
+	// 	"all": {
+	// 		all: true,
+	// 		expect: []PartitionStat{
+	// 			{Device: "sysfs", Mountpoint: "/sys", Fstype: "sysfs"},
+	// 			{Device: "none", Mountpoint: "/run", Fstype: "tmpfs"},
+	// 		},
+	// 	},
+	// 	"not all": {
+	// 		all: false,
+	// 		expect: []PartitionStat{
+	// 			{Device: "sysfs", Mountpoint: "/sys", Fstype: "sysfs"},
+	// 		},
+	// 	},
+	// }
 
-	for name, c := range cases {
-		t.Run(name, func(t *testing.T) {
-			actual := parseFieldsOnMounts(lines, c.all, fs)
-			assert.Equal(t, c.expect, actual)
-		})
-	}
+	// for name, c := range cases {
+	// 	t.Run(name, func(t *testing.T) {
+	// 		actual := parseFieldsOnMounts(iterSlice(lines), len(lines), c.all, fs)
+	// 		assert.Equal(t, c.expect, actual)
+	// 	})
+	// }
 }
 
 func TestGetDeviceName(t *testing.T) {

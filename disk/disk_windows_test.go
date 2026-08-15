@@ -55,7 +55,6 @@ func TestBuildPartitionStat(t *testing.T) {
 	assert.Equal(t, volumeC, part.Mountpoint)
 	assert.Equal(t, volumeC, part.Device)
 	assert.Equal(t, "NTFS", part.Fstype) // NTFS should be the only allowed fs on C: drive since windows Vista, maybe in future could be also reFS
-	assert.Contains(t, part.Opts, rw)    // C: must have atleast rw option
 }
 
 func TestProcessLogicalDrives(t *testing.T) {
@@ -69,5 +68,4 @@ func TestProcessLogicalDrives(t *testing.T) {
 	assert.Equal(t, "C:", parts[0].Mountpoint)
 	assert.Equal(t, "C:", parts[0].Device)
 	assert.Equal(t, "NTFS", parts[0].Fstype)
-	assert.Contains(t, parts[0].Opts, rw)
 }

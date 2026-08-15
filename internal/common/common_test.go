@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,10 +16,47 @@ import (
 	"github.com/shirou/gopsutil/v4/common"
 )
 
+func TestSplitLinesSkipEmpty(t *testing.T) {
+	t.Run("all_empty", func(t *testing.T) {
+		lines := "\n\n\n\n\n"
+		actual := slices.Collect(SplitLinesSkipEmpty([]byte(lines)))
+		assert.Empty(t, actual)
+	})
+	t.Run("empty_string", func(t *testing.T) {
+		lines := ""
+		actual := slices.Collect(SplitLinesSkipEmpty([]byte(lines)))
+		assert.Empty(t, actual)
+	})
+	t.Run("mixed", func(t *testing.T) {
+		lines := "hello\n\nworld\n\n\n"
+		actual := slices.Collect(SplitLinesSkipEmpty([]byte(lines)))
+		assert.Equal(t, []string{"hello", "world"}, actual)
+	})
+}
+
+func TestCountLinesSkipEmpty(t *testing.T) {
+	t.Run("all_empty", func(t *testing.T) {
+		lines := "\n\n\n\n\n"
+		actual := CountLinesSkipEmpty([]byte(lines))
+		assert.Equal(t, 0, actual)
+	})
+	t.Run("empty_string", func(t *testing.T) {
+		lines := ""
+		actual := CountLinesSkipEmpty([]byte(lines))
+		assert.Equal(t, 0, actual)
+	})
+	t.Run("mixed", func(t *testing.T) {
+		lines := "hello\n\nworld\n\n\n"
+		actual := CountLinesSkipEmpty([]byte(lines))
+		assert.Equal(t, 2, actual)
+	})
+}
+
 func TestReadlines(t *testing.T) {
-	ret, err := ReadLines("common_test.go")
+	ret, _, err := ReadLines("common_test.go")
 	require.NoError(t, err)
-	assert.Containsf(t, ret[1], "package common", "could not read correctly")
+	lines := slices.Collect(ret)
+	assert.Containsf(t, lines[1], "package common", "could not read correctly")
 }
 
 func TestReadLinesOffsetN(t *testing.T) {
@@ -55,9 +93,10 @@ func TestMustParseFloat64(t *testing.T) {
 }
 
 func TestStringsContains(t *testing.T) {
-	target, err := ReadLines("common_test.go")
+	target, _, err := ReadLines("common_test.go")
 	require.NoError(t, err)
-	assert.Truef(t, StringsContains(target, "func TestStringsContains(t *testing.T) {"), "cloud not test correctly")
+	lines := slices.Collect(target)
+	assert.Truef(t, StringsContains(lines, "func TestStringsContains(t *testing.T) {"), "cloud not test correctly")
 }
 
 func TestPathExists(t *testing.T) {

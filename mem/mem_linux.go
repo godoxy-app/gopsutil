@@ -18,41 +18,42 @@ import (
 	"github.com/shirou/gopsutil/v4/internal/common"
 )
 
-func VirtualMemory() (*VirtualMemoryStat, error) {
+func VirtualMemory() (VirtualMemoryStat, error) {
 	return VirtualMemoryWithContext(context.Background())
 }
 
-func VirtualMemoryWithContext(ctx context.Context) (*VirtualMemoryStat, error) {
+func VirtualMemoryWithContext(ctx context.Context) (VirtualMemoryStat, error) {
 	vm, _, err := fillFromMeminfoWithContext(ctx)
 	if err != nil {
-		return nil, err
+		return VirtualMemoryStat{}, err
 	}
 	return vm, nil
 }
 
-func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVirtualMemory, error) {
+func fillFromMeminfoWithContext(ctx context.Context) (ret VirtualMemoryStat, retEx ExVirtualMemory, err error) {
 	filename := common.HostProcWithContext(ctx, "meminfo")
-	lines, err := common.ReadLines(filename)
+	lines, _, err := common.ReadLines(filename)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't read %s: %w", filename, err)
+		return ret, retEx, fmt.Errorf("couldn't read %s: %w", filename, err)
 	}
 
 	// flag if MemAvailable is in /proc/meminfo (kernel 3.14+)
 	memavail := false
-	activeFile := false   // "Active(file)" not available: 2.6.28 / Dec 2008
-	inactiveFile := false // "Inactive(file)" not available: 2.6.28 / Dec 2008
-	sReclaimable := false // "Sreclaimable:" not available: 2.6.19 / Nov 2006
+	activeFile := false      // "Active(file)" not available: 2.6.28 / Dec 2008
+	inactiveFile := false    // "Inactive(file)" not available: 2.6.28 / Dec 2008
+	hasSreclaimable := false // "Sreclaimable:" not available: 2.6.19 / Nov 2006
 
-	ret := &VirtualMemoryStat{}
-	retEx := &ExVirtualMemory{}
+	total := uint64(0)
+	sReclaimable := uint64(0)
+	cached := uint64(0)
+	free := uint64(0)
 
-	for _, line := range lines {
-		fields := strings.Split(line, ":")
-		if len(fields) != 2 {
+	for line := range lines {
+		if strings.Count(line, ":") != 1 {
 			continue
 		}
-		key := strings.TrimSpace(fields[0])
-		value := strings.TrimSpace(fields[1])
+		key, value, _ := strings.Cut(line, ":")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
 		value = strings.ReplaceAll(value, " kB", "")
 
 		switch key {
@@ -61,13 +62,13 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVir
 			if err != nil {
 				return ret, retEx, err
 			}
-			ret.Total = t * 1024
+			total = t * 1024
 		case "MemFree":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
 				return ret, retEx, err
 			}
-			ret.Free = t * 1024
+			free = t * 1024
 		case "MemAvailable":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
@@ -75,42 +76,12 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVir
 			}
 			memavail = true
 			ret.Available = t * 1024
-		case "Buffers":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Buffers = t * 1024
 		case "Cached":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
 				return ret, retEx, err
 			}
-			ret.Cached = t * 1024
-		case "Active":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Active = t * 1024
-		case "Inactive":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Inactive = t * 1024
-		case "Active(anon)":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.ActiveAnon = t * 1024
-		case "Inactive(anon)":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.InactiveAnon = t * 1024
+			cached = t * 1024
 		case "Active(file)":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
@@ -125,203 +96,26 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *ExVir
 			}
 			inactiveFile = true
 			retEx.InactiveFile = t * 1024
-		case "Unevictable":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.Unevictable = t * 1024
-		case "Percpu":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.Percpu = t * 1024
-		case "Writeback":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.WriteBack = t * 1024
-		case "WritebackTmp":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.WriteBackTmp = t * 1024
-		case "Dirty":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Dirty = t * 1024
-		case "Shmem":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Shared = t * 1024
-		case "Slab":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Slab = t * 1024
 		case "SReclaimable":
 			t, err := strconv.ParseUint(value, 10, 64)
 			if err != nil {
 				return ret, retEx, err
 			}
-			sReclaimable = true
-			ret.Sreclaimable = t * 1024
-		case "SUnreclaim":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Sunreclaim = t * 1024
-		case "KernelStack":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			retEx.KernelStack = t * 1024
-		case "PageTables":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.PageTables = t * 1024
-		case "SwapCached":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.SwapCached = t * 1024
-		case "CommitLimit":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.CommitLimit = t * 1024
-		case "Committed_AS":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.CommittedAS = t * 1024
-		case "HighTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HighTotal = t * 1024
-		case "HighFree":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HighFree = t * 1024
-		case "LowTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.LowTotal = t * 1024
-		case "LowFree":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.LowFree = t * 1024
-		case "SwapTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.SwapTotal = t * 1024
-		case "SwapFree":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.SwapFree = t * 1024
-		case "Mapped":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.Mapped = t * 1024
-		case "VmallocTotal":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.VmallocTotal = t * 1024
-		case "VmallocUsed":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.VmallocUsed = t * 1024
-		case "VmallocChunk":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.VmallocChunk = t * 1024
-		case "HugePages_Total":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesTotal = t
-		case "HugePages_Free":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesFree = t
-		case "HugePages_Rsvd":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesRsvd = t
-		case "HugePages_Surp":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePagesSurp = t
-		case "Hugepagesize":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.HugePageSize = t * 1024
-		case "AnonHugePages":
-			t, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return ret, retEx, err
-			}
-			ret.AnonHugePages = t * 1024
+			hasSreclaimable = true
+			sReclaimable = t * 1024
 		}
 	}
 
-	ret.Cached += ret.Sreclaimable
+	cached += sReclaimable
 
 	if !memavail {
-		if activeFile && inactiveFile && sReclaimable {
-			ret.Available = calculateAvailVmem(ctx, ret, retEx)
+		if activeFile && inactiveFile && hasSreclaimable {
+			ret.Available = calculateAvailVmem(ctx, &retEx, free, cached, sReclaimable)
 		} else {
-			ret.Available = ret.Cached + ret.Free
+			ret.Available = cached + free
 		}
 	}
-	ret.Used = ret.Total - ret.Available
-
-	ret.UsedPercent = float64(ret.Used) / float64(ret.Total) * 100.0
-
+	ret.Used = total - ret.Available
 	return ret, retEx, nil
 }
 
@@ -335,7 +129,7 @@ func SwapMemoryWithContext(ctx context.Context) (*SwapMemoryStat, error) {
 	if err := unix.Sysinfo(sysinfo); err != nil {
 		return nil, err
 	}
-	ret := &SwapMemoryStat{
+	ret := SwapMemoryStat{
 		Total: uint64(sysinfo.Totalswap) * uint64(sysinfo.Unit),
 		Free:  uint64(sysinfo.Freeswap) * uint64(sysinfo.Unit),
 	}
@@ -347,11 +141,11 @@ func SwapMemoryWithContext(ctx context.Context) (*SwapMemoryStat, error) {
 		ret.UsedPercent = 0
 	}
 	filename := common.HostProcWithContext(ctx, "vmstat")
-	lines, err := common.ReadLines(filename)
+	lines, _, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't read %s: %w", filename, err)
 	}
-	for _, l := range lines {
+	for l := range lines {
 		fields := strings.Fields(l)
 		if len(fields) < 2 {
 			continue
@@ -395,25 +189,25 @@ func SwapMemoryWithContext(ctx context.Context) (*SwapMemoryStat, error) {
 			ret.PgMajFault = value * 4 * 1024
 		}
 	}
-	return ret, nil
+	return &ret, nil
 }
 
 // calculateAvailVmem is a fallback under kernel 3.14 where /proc/meminfo does not provide
 // "MemAvailable:" column. It reimplements an algorithm from the link below
 // https://github.com/giampaolo/psutil/pull/890
-func calculateAvailVmem(ctx context.Context, ret *VirtualMemoryStat, retEx *ExVirtualMemory) uint64 {
+func calculateAvailVmem(ctx context.Context, retEx *ExVirtualMemory, free, cached, sReclaimable uint64) uint64 {
 	var watermarkLow uint64
 
 	fn := common.HostProcWithContext(ctx, "zoneinfo")
-	lines, err := common.ReadLines(fn)
+	lines, _, err := common.ReadLines(fn)
 	if err != nil {
-		return ret.Free + ret.Cached // fallback under kernel 2.6.13
+		return free + cached // fallback under kernel 2.6.13
 	}
 
 	pagesize := uint64(os.Getpagesize())
 	watermarkLow = 0
 
-	for _, line := range lines {
+	for line := range lines {
 		fields := strings.Fields(line)
 
 		if strings.HasPrefix(fields[0], "low") {
@@ -427,15 +221,11 @@ func calculateAvailVmem(ctx context.Context, ret *VirtualMemoryStat, retEx *ExVi
 
 	watermarkLow *= pagesize
 
-	availMemory := ret.Free - watermarkLow
+	availMemory := free - watermarkLow
 	pageCache := retEx.ActiveFile + retEx.InactiveFile
 	pageCache -= uint64(math.Min(float64(pageCache/2), float64(watermarkLow)))
 	availMemory += pageCache
-	availMemory += ret.Sreclaimable - uint64(math.Min(float64(ret.Sreclaimable/2.0), float64(watermarkLow)))
-
-	if availMemory < 0 {
-		availMemory = 0
-	}
+	availMemory += sReclaimable - uint64(math.Min(float64(sReclaimable/2.0), float64(watermarkLow)))
 
 	return availMemory
 }

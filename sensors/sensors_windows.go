@@ -37,8 +37,8 @@ func TemperaturesWithContext(ctx context.Context) ([]TemperatureStat, error) {
 	return ret, nil
 }
 
-func kelvinToCelsius(temp uint32) float64 {
+func kelvinToCelsius(temp uint32) float32 {
 	// wmi return temperature Kelvin * 10, so need to divide the result by 10,
 	// and then minus 273.15 to get °Celsius.
-	return (float64(temp*10) - 27315) / 100
+	return (float32(temp*10) - 27315) / 100
 }

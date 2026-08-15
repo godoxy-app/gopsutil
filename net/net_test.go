@@ -3,7 +3,6 @@ package net
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -23,10 +22,9 @@ func TestAddrString(t *testing.T) {
 
 func TestIOCountersStatString(t *testing.T) {
 	v := IOCountersStat{
-		Name:      "test",
 		BytesSent: 100,
 	}
-	e := `{"name":"test","bytesSent":100,"bytesRecv":0,"packetsSent":0,"packetsRecv":0,"errin":0,"errout":0,"dropin":0,"dropout":0,"fifoin":0,"fifoout":0}`
+	e := `{"bytes_sent":100,"bytes_recv":0,"upload_speed":0.0,"download_speed":0.0}`
 	assert.JSONEqf(t, e, v.String(), "NetIOCountersStat string is invalid: %v", v)
 }
 
@@ -60,32 +58,12 @@ func TestIOCountersAll(t *testing.T) {
 		t.Skip("not implemented")
 	}
 	require.NoErrorf(t, err, "Could not get NetIOCounters: %v", err)
-	per, err := IOCounters(true)
+	_, err = IOCounters(true)
 	if errors.Is(err, common.ErrNotImplementedError) {
 		t.Skip("not implemented")
 	}
 	require.NoErrorf(t, err, "Could not get NetIOCounters: %v", err)
 	assert.Lenf(t, v, 1, "Could not get NetIOCounters: %v", v)
-	assert.Equalf(t, "all", v[0].Name, "Invalid NetIOCounters: %v", v)
-	var pr uint64
-	for _, p := range per {
-		pr += p.PacketsRecv
-	}
-	// small diff is ok, compare instead of math.Abs(subtraction) with uint64
-	var diff uint64
-	if v[0].PacketsRecv > pr {
-		diff = v[0].PacketsRecv - pr
-	} else {
-		diff = pr - v[0].PacketsRecv
-	}
-	if diff > 5 {
-		if ci := os.Getenv("CI"); ci != "" {
-			// This test often fails in CI. so just print even if failed.
-			fmt.Printf("invalid sum value: %v, %v", v[0].PacketsRecv, pr)
-		} else {
-			t.Errorf("invalid sum value: %v, %v", v[0].PacketsRecv, pr)
-		}
-	}
 }
 
 func TestIOCountersPerNic(t *testing.T) {
@@ -95,30 +73,6 @@ func TestIOCountersPerNic(t *testing.T) {
 	}
 	require.NoErrorf(t, err, "Could not get NetIOCounters: %v", err)
 	assert.NotEmptyf(t, v, "Could not get NetIOCounters: %v", v)
-	for _, vv := range v {
-		assert.NotEmptyf(t, vv.Name, "Invalid NetIOCounters: %v", vv)
-	}
-}
-
-func TestGetNetIOCountersAll(t *testing.T) {
-	n := []IOCountersStat{
-		{
-			Name:        "a",
-			BytesRecv:   10,
-			PacketsRecv: 10,
-		},
-		{
-			Name:        "b",
-			BytesRecv:   10,
-			PacketsRecv: 10,
-			Errin:       10,
-		},
-	}
-	ret := getIOCountersAll(n)
-	assert.Lenf(t, ret, 1, "invalid return count")
-	assert.Equalf(t, "all", ret[0].Name, "invalid return name")
-	assert.Equalf(t, uint64(20), ret[0].BytesRecv, "invalid count bytesrecv")
-	assert.Equalf(t, uint64(10), ret[0].Errin, "invalid count errin")
 }
 
 func TestInterfaces(t *testing.T) {

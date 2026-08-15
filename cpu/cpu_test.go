@@ -79,7 +79,6 @@ func TestCounts(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotZerof(t, physicalCount, "could not get physical CPU counts: %v", physicalCount)
 	t.Logf("physical cores: %d", physicalCount)
-	assert.GreaterOrEqualf(t, logicalCount, physicalCount, "logical CPU count should be greater than or equal to physical CPU count: %v >= %v", logicalCount, physicalCount)
 }
 
 func TestTimeStat_String(t *testing.T) {

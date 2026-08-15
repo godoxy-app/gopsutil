@@ -8,10 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 	"path"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -239,24 +239,24 @@ var fsTypeMap = map[int64]string{
 
 // readMountFile reads mountinfo or mounts file under the specified root path
 // (eg, /proc/1, /proc/self, etc)
-func readMountFile(root string) (lines []string, useMounts bool, filename string, err error) {
+func readMountFile(root string) (lines iter.Seq[string], numLines int, useMounts bool, filename string, err error) {
 	filename = path.Join(root, "mountinfo")
-	lines, err = common.ReadLines(filename)
+	lines, numLines, err = common.ReadLines(filename)
 	if err != nil {
 		var pathErr *os.PathError
 		if !errors.As(err, &pathErr) {
-			return lines, useMounts, filename, err
+			return
 		}
 		// if kernel does not support 1/mountinfo, fallback to 1/mounts (<2.6.26)
 		useMounts = true
 		filename = path.Join(root, "mounts")
-		lines, err = common.ReadLines(filename)
+		lines, numLines, err = common.ReadLines(filename)
 		if err != nil {
-			return lines, useMounts, filename, err
+			return
 		}
-		return lines, useMounts, filename, err
+		return
 	}
-	return lines, useMounts, filename, err
+	return
 }
 
 func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, error) {
@@ -269,13 +269,13 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 		root = filepath.Dir(hpmPath)
 	}
 
-	lines, useMounts, filename, err := readMountFile(root)
+	lines, numLines, useMounts, filename, err := readMountFile(root)
 	if err != nil {
 		if hpmPath != "" { // don't fallback with HOST_PROC_MOUNTINFO
 			return nil, err
 		}
 		// fallback to "/proc/self/..."  #1159
-		lines, useMounts, filename, err = readMountFile(common.HostProcWithContext(ctx, path.Join("self")))
+		lines, numLines, useMounts, filename, err = readMountFile(common.HostProcWithContext(ctx, path.Join("self")))
 		if err != nil {
 			return nil, err
 		}
@@ -288,12 +288,12 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 
 	var ret []PartitionStat
 	if useMounts { // use mounts file
-		ret = parseFieldsOnMounts(lines, all, fs)
+		ret = parseFieldsOnMounts(lines, numLines, all, fs)
 		return ret, nil
 	}
 
 	// use mountinfo
-	ret, err = parseFieldsOnMountinfo(ctx, lines, all, fs, filename)
+	ret, err = parseFieldsOnMountinfo(ctx, lines, numLines, all, fs, filename)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing mountinfo file %s: %w", filename, err)
 	}
@@ -301,19 +301,24 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 	return ret, nil
 }
 
-func parseFieldsOnMounts(lines []string, all bool, fs []string) []PartitionStat {
-	ret := make([]PartitionStat, 0, len(lines))
-	for _, line := range lines {
+func parseFieldsOnMounts(lines iter.Seq[string], numLines int, all bool, fs []string) []PartitionStat {
+	ret := make([]PartitionStat, numLines)
+	idx := 0
+	for line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) < 4 {
 			continue
 		}
 
+		fstype := common.InternString(fields[2])
+		if !shouldIncludeFsType(fstype) {
+			continue
+		}
 		d := PartitionStat{
-			Device:     fields[0],
-			Mountpoint: unescapeFstab(fields[1]),
-			Fstype:     fields[2],
-			Opts:       strings.Split(fields[3], ","),
+			Device:     common.InternString(fields[0]),
+			Mountpoint: common.InternString(unescapeFstab(fields[1])),
+			Fstype:     fstype,
+			// Opts:       strings.Split(fields[3], ","),
 		}
 
 		if !all {
@@ -321,17 +326,19 @@ func parseFieldsOnMounts(lines []string, all bool, fs []string) []PartitionStat 
 				continue
 			}
 		}
-		ret = append(ret, d)
+		ret[idx] = d
+		idx++
 	}
 
-	return ret
+	return ret[:idx]
 }
 
-func parseFieldsOnMountinfo(ctx context.Context, lines []string, all bool, fs []string, filename string) ([]PartitionStat, error) {
-	ret := make([]PartitionStat, 0, len(lines))
+func parseFieldsOnMountinfo(ctx context.Context, lines iter.Seq[string], numLines int, all bool, fs []string, filename string) ([]PartitionStat, error) {
+	ret := make([]PartitionStat, numLines)
+	idx := 0
 	seenDevIDs := make(map[string]string)
 
-	for _, line := range lines {
+	for line := range lines {
 		// See proc_pid_mountinfo(5) (proc(5) on EL)
 		// A line of <filename> (<procfs root>/<pid>/mountinfo) has the following structure:
 		//	36  35  98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue
@@ -341,23 +348,20 @@ func parseFieldsOnMountinfo(ctx context.Context, lines []string, all bool, fs []
 		// Documentation is unclear if (11) is optional or not but this function does not currently use it.
 
 		// split the mountinfo line by the separator hyphen (`(8)` above)
-		parts := strings.SplitN(line, " - ", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("found invalid mountinfo line in file %s (bad parts len): %s ", filename, line)
+		part0, part1, ok := strings.Cut(line, " - ")
+		if !ok {
+			// clone the line because it's from an iterator
+			return nil, fmt.Errorf("found invalid mountinfo line in file %s: %s ", filename, strings.Clone(line))
 		}
 
-		fields := strings.Fields(parts[0])
+		fields := strings.Fields(part0)
 		if len(fields) < 5 { // field (7) is optional, field (6) may(?) be optional
 			return nil, fmt.Errorf("found invalid mountinfo line in file %s (bad fields(1) len): %s ", filename, line)
 		}
 		blockDeviceID := fields[2]
 		rootDir := fields[3]
 		mountPoint := fields[4]
-		mountOpts := []string{}
-		if len(fields) >= 6 {
-			mountOpts = strings.Split(fields[5], ",")
-		}
-		fields = strings.Fields(parts[1])
+		fields = strings.Fields(part1)
 		if len(fields) < 2 {
 			return nil, fmt.Errorf("found invalid mountinfo line in file %s (bad fields(2) len): %s ", filename, line)
 		}
@@ -367,10 +371,6 @@ func parseFieldsOnMountinfo(ctx context.Context, lines []string, all bool, fs []
 		if len(fields) >= 3 {
 			superOpts = strings.Split(fields[2], ",")
 		}
-		// Since Linux 2.6.16, read-only can be set independently on the
-		// mount point and the filesystem superblock. The mount is writable
-		// only when both option sets are read-write.
-		mountOpts = effectiveMountOpts(mountOpts, superOpts)
 		isBind := false
 		// When !all, keep only real filesystems (non-"nodev" entries of
 		// /proc/filesystems plus zfs), as parseFieldsOnMounts() does.
@@ -406,7 +406,6 @@ func parseFieldsOnMountinfo(ctx context.Context, lines []string, all bool, fs []
 		}
 		if strings.HasPrefix(mntSrc, "/") && rootDir != "/" && !isSubvol {
 			isBind = true
-			mountOpts = append(mountOpts, "bind")
 		}
 		if _, ok := seenDevIDs[blockDeviceID]; !ok {
 			seenDevIDs[blockDeviceID] = device
@@ -417,16 +416,16 @@ func parseFieldsOnMountinfo(ctx context.Context, lines []string, all bool, fs []
 		}
 
 		d := PartitionStat{
-			Device:     device,
-			Mountpoint: unescapeFstab(mountPoint),
-			Fstype:     fsType,
-			Opts:       mountOpts,
+			Device:     common.InternString(device),
+			Mountpoint: common.InternString(unescapeFstab(mountPoint)),
+			Fstype:     common.InternString(fsType),
+			// Opts:       mountOpts,
 		}
 
 		if strings.HasPrefix(d.Device, "/dev/mapper/") {
 			devpath, err := filepath.EvalSymlinks(common.HostDevWithContext(ctx, strings.Replace(d.Device, "/dev", "", 1)))
 			if err == nil {
-				d.Device = devpath
+				d.Device = common.InternString(devpath)
 			}
 		}
 
@@ -435,78 +434,47 @@ func parseFieldsOnMountinfo(ctx context.Context, lines []string, all bool, fs []
 		if d.Device == "/dev/root" {
 			devpath, err := os.Readlink(common.HostSysWithContext(ctx, "/dev/block/"+blockDeviceID))
 			if err == nil {
-				d.Device = strings.Replace(d.Device, "root", filepath.Base(devpath), 1)
+				d.Device = common.InternString(strings.Replace(d.Device, "root", filepath.Base(devpath), 1))
 			}
 		}
-		ret = append(ret, d)
+		ret[idx] = d
+		idx++
 	}
-	return ret, nil
-}
-
-func effectiveMountOpts(mountOpts, superOpts []string) []string {
-	mode := effectiveReadWriteMode(mountOpts, superOpts)
-	if mode == "" {
-		return mountOpts
-	}
-
-	updated := make([]string, 0, len(mountOpts)+1)
-	modeSet := false
-	for _, opt := range mountOpts {
-		if opt == "ro" || opt == "rw" {
-			if !modeSet {
-				updated = append(updated, mode)
-				modeSet = true
-			}
-			continue
-		}
-		updated = append(updated, opt)
-	}
-	if !modeSet {
-		updated = append([]string{mode}, updated...)
-	}
-	return updated
-}
-
-func effectiveReadWriteMode(mountOpts, superOpts []string) string {
-	if slices.Contains(mountOpts, "ro") || slices.Contains(superOpts, "ro") {
-		return "ro"
-	}
-	if slices.Contains(mountOpts, "rw") && slices.Contains(superOpts, "rw") {
-		return "rw"
-	}
-	return ""
+	return ret[:idx], nil
 }
 
 // getFileSystems returns supported filesystems from /proc/filesystems
 func getFileSystems(ctx context.Context) ([]string, error) {
 	filename := common.HostProcWithContext(ctx, "filesystems")
-	lines, err := common.ReadLines(filename)
+	lines, _, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, err
 	}
 	var ret []string
-	for _, line := range lines {
+	for line := range lines {
 		if !strings.HasPrefix(line, "nodev") {
 			ret = append(ret, strings.TrimSpace(line))
 			continue
 		}
-		t := strings.Split(line, "\t")
-		if len(t) != 2 || t[1] != "zfs" {
+		if strings.Count(line, "\t") != 1 {
 			continue
 		}
-		ret = append(ret, strings.TrimSpace(t[1]))
+		_, fsType, _ := strings.Cut(line, "\t")
+		if strings.TrimSpace(fsType) == "zfs" {
+			ret = append(ret, "zfs")
+		}
 	}
 
 	return ret, nil
 }
 
-func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOCountersStat, error) {
+func IOCountersWithContext(ctx context.Context, names ...string) (map[string]*IOCountersStat, error) {
 	filename := common.HostProcWithContext(ctx, "diskstats")
-	lines, err := common.ReadLines(filename)
+	lines, numLines, err := common.ReadLines(filename)
 	if err != nil {
 		return nil, err
 	}
-	ret := make(map[string]IOCountersStat)
+	ret := make(map[string]*IOCountersStat, numLines)
 	empty := IOCountersStat{}
 
 	// use only basename such as "/dev/sda1" to "sda1"
@@ -514,8 +482,8 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 		names[i] = filepath.Base(name)
 	}
 
-	for _, line := range lines {
-		fields := strings.Fields(line)
+	for line := range lines {
+		fields := strings.Fields(string(line))
 		if len(fields) < 14 {
 			// malformed line in /proc/diskstats, avoid panic by ignoring.
 			continue
@@ -526,77 +494,39 @@ func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOC
 			continue
 		}
 
-		reads, err := strconv.ParseUint((fields[3]), 10, 64)
+		if shouldExcludeDisk(name) {
+			continue
+		}
+
+		reads, err := strconv.ParseUint(fields[3], 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		mergedReads, err := strconv.ParseUint((fields[4]), 10, 64)
+		rbytes, err := strconv.ParseUint(fields[5], 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		rbytes, err := strconv.ParseUint((fields[5]), 10, 64)
+		writes, err := strconv.ParseUint(fields[7], 10, 64)
 		if err != nil {
 			return ret, err
 		}
-		rtime, err := strconv.ParseUint((fields[6]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		writes, err := strconv.ParseUint((fields[7]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		mergedWrites, err := strconv.ParseUint((fields[8]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		wbytes, err := strconv.ParseUint((fields[9]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		wtime, err := strconv.ParseUint((fields[10]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		iopsInProgress, err := strconv.ParseUint((fields[11]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		iotime, err := strconv.ParseUint((fields[12]), 10, 64)
-		if err != nil {
-			return ret, err
-		}
-		weightedIO, err := strconv.ParseUint((fields[13]), 10, 64)
+		wbytes, err := strconv.ParseUint(fields[9], 10, 64)
 		if err != nil {
 			return ret, err
 		}
 		d := IOCountersStat{
-			ReadBytes:        rbytes * sectorSize,
-			WriteBytes:       wbytes * sectorSize,
-			ReadCount:        reads,
-			WriteCount:       writes,
-			MergedReadCount:  mergedReads,
-			MergedWriteCount: mergedWrites,
-			ReadTime:         rtime,
-			WriteTime:        wtime,
-			IopsInProgress:   iopsInProgress,
-			IoTime:           iotime,
-			WeightedIO:       weightedIO,
+			ReadBytes:  rbytes * sectorSize,
+			WriteBytes: wbytes * sectorSize,
+			ReadCount:  reads,
+			WriteCount: writes,
 		}
 		if d == empty {
 			continue
 		}
-		d.Name = name
+		d.Name = common.InternString(name)
 
-		// Names passed in can be full paths (/dev/sda) or just device names (sda).
-		// Since `name` here is already a basename, re-add the /dev path.
-		// This is not ideal, but we may break the API by changing how SerialNumberWithContext
-		// works.
-		deviceName := getDeviceName(name)
-		d.SerialNumber, _ = SerialNumberWithContext(ctx, common.HostDevWithContext(ctx, deviceName))
-		d.Label, _ = LabelWithContext(ctx, deviceName)
-
-		ret[name] = d
+		// use interned string as key
+		ret[d.Name] = &d
 	}
 	return ret, nil
 }
